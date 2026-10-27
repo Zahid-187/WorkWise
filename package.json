@@ -1,0 +1,16 @@
+{
+  "name": "workwise",
+  "version": "1.0.0",
+  "description": "WorkWise – Fair, Safe, Transparent Work. Hackathon: Prompt Wars 2026, SDG 8.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node server/seed.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sql.js": "^1.12.0"
+  }
+}

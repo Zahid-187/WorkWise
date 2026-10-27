@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkWise – Admin Dashboard</title>
+  <script src="/vendor/tailwind.js"></script>
+  <link  rel="stylesheet" href="/css/style.css" />
+  <script src="/vendor/chart.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-dvh pb-8">
+
+<div x-data="employerApp()" x-init="init()" class="max-w-2xl mx-auto">
+
+  <!-- ── Header ── -->
+  <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <a href="/" class="text-gray-400 tap-target flex items-center text-sm">← Home</a>
+    <div class="text-center">
+      <h1 class="font-black text-gray-900 text-base">Admin Dashboard</h1>
+    </div>
+    <!-- Industry toggle -->
+    <div class="flex gap-1">
+      <button @click="setIndustry('construction')"
+        :class="industry==='construction' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'"
+        class="tap-target px-2.5 py-1 rounded-lg text-xs font-bold transition-all">🏗️</button>
+      <button @click="setIndustry('college')"
+        :class="industry==='college' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'"
+        class="tap-target px-2.5 py-1 rounded-lg text-xs font-bold transition-all">🎓</button>
+    </div>
+  </header>
+
+  <!-- ── Industry label ── -->
+  <div class="px-4 pt-3 pb-1">
+    <span class="industry-badge" x-text="ind.icon + ' ' + ind.label"></span>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="flex bg-white border-b border-gray-100 sticky top-14 z-10">
+    <button @click="tab='roster'"     :class="tab==='roster'     ? 'active' : ''" class="nav-tab">
+      <span class="tab-icon">👷</span> Roster
+    </button>
+    <button @click="tab='grievances'" :class="tab==='grievances' ? 'active' : ''" class="nav-tab">
+      <span class="tab-icon">📢</span> Grievances
+      <span x-show="openGrievanceCount > 0"
+        class="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-tight"
+        x-text="openGrievanceCount"></span>
+    </button>
+    <button @click="tab='feedback'"   :class="tab==='feedback'   ? 'active' : ''" class="nav-tab">
+      <span class="tab-icon">💬</span> Feedback
+    </button>
+    <button @click="tab='insights'"   :class="tab==='insights'   ? 'active' : ''" class="nav-tab">
+      <span class="tab-icon">📊</span> Insights
+    </button>
+  </div>
+
+  <main class="px-4 mt-4">
+
+    <!-- ══════════ ROSTER TAB ══════════ -->
+    <div x-show="tab==='roster'" class="flex flex-col gap-3">
+      <div class="card">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Weekly Hours — <span x-text="ind.label"></span></p>
+        <canvas id="rosterChart" height="180"></canvas>
+      </div>
+
+      <template x-for="w in rosterSummary" :key="w.id">
+        <div class="card flex items-start gap-3" :class="w.fatigue_weekly ? 'overtime-row' : ''">
+          <span class="text-3xl" x-text="w.avatar_emoji"></span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <span class="font-bold text-gray-900 text-sm" x-text="w.name"></span>
+              <div class="flex gap-1.5 flex-wrap">
+                <template x-if="w.fatigue_weekly">
+                  <span class="badge badge-high">60h+ ⚠️</span>
+                </template>
+                <template x-if="w.fatigue_consecutive">
+                  <span class="badge badge-medium">Rest ⚠️</span>
+                </template>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400" x-text="w.role"></p>
+            <div class="flex gap-4 mt-1.5 text-sm">
+              <span :class="w.fatigue_weekly ? 'overtime-text' : 'text-gray-700'" class="font-bold" x-text="fmtH(w.total_hours) + ' worked'"></span>
+              <span class="text-amber-600 font-semibold" x-show="w.total_overtime > 0" x-text="fmtH(w.total_overtime) + ' OT'"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ══════════ GRIEVANCES TAB ══════════ -->
+    <div x-show="tab==='grievances'" class="flex flex-col gap-3">
+
+      <!-- Filters -->
+      <div class="card flex gap-2 flex-wrap">
+        <select x-model="gFilter.status" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white flex-1 min-w-0">
+          <option value="">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="under_review">Under Review</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <select x-model="gFilter.severity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white flex-1 min-w-0">
+          <option value="">All Severities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+
+      <template x-if="filteredGrievances.length === 0">
+        <div class="card text-center text-gray-400 py-8">No grievances match the filter.</div>
+      </template>
+
+      <template x-for="g in filteredGrievances" :key="g.id">
+        <div class="card flex flex-col gap-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xl" x-text="g.avatar_emoji"></span>
+              <div>
+                <span class="font-bold text-sm text-gray-900" x-text="g.worker_name"></span>
+                <p class="text-xs text-gray-400" x-text="new Date(g.created_at).toLocaleDateString('en-IN')"></p>
+              </div>
+            </div>
+            <div class="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+              <span class="badge" :class="'badge-' + g.severity" x-text="g.severity"></span>
+              <span class="badge" :class="'badge-' + g.status.replace('_','-')" x-text="g.status.replace('_',' ')"></span>
+              <template x-if="g.is_payslip_dispute">
+                <span class="badge" style="background:#EDE9FE; color:#5B21B6;">payslip</span>
+              </template>
+            </div>
+          </div>
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide" x-text="g.category"></p>
+          <p class="text-sm text-gray-700 leading-relaxed" x-text="g.description"></p>
+          <!-- Action buttons -->
+          <div x-show="g.status !== 'resolved'" class="flex gap-2 mt-1">
+            <button
+              @click="updateGrievance(g.id, 'under_review', g.severity)"
+              x-show="g.status === 'open'"
+              class="btn-primary text-xs px-3 py-2"
+              style="background:#F59E0B; min-height:40px"
+            >Mark Under Review</button>
+            <button
+              @click="updateGrievance(g.id, 'resolved', g.severity)"
+              class="btn-primary text-xs px-3 py-2"
+              style="background:#16A34A; min-height:40px"
+            >✅ Resolve</button>
+            <button
+              @click="updateGrievance(g.id, g.status, 'high')"
+              x-show="g.severity !== 'high'"
+              class="btn-primary text-xs px-3 py-2"
+              style="background:#DC2626; min-height:40px"
+            >🚨 Escalate</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ══════════ FEEDBACK TAB ══════════ -->
+    <div x-show="tab==='feedback'" class="flex flex-col gap-3">
+
+      <!-- Summary counts -->
+      <div class="card grid grid-cols-3 gap-3 text-center">
+        <div>
+          <div class="text-2xl font-black text-green-600" x-text="feedbackCounts.positive"></div>
+          <div class="text-xs text-gray-400">Positive 😊</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black text-gray-500" x-text="feedbackCounts.neutral"></div>
+          <div class="text-xs text-gray-400">Neutral 😐</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black text-red-500" x-text="feedbackCounts.negative"></div>
+          <div class="text-xs text-gray-400">Negative 😟</div>
+        </div>
+      </div>
+
+      <!-- Sentiment filter -->
+      <div class="flex gap-2">
+        <template x-for="s in ['','positive','neutral','negative']" :key="s">
+          <button
+            @click="fbFilter = s"
+            :class="fbFilter === s ? 'bg-gray-800 text-white' : 'bg-white text-gray-500'"
+            class="flex-1 py-2 rounded-xl text-xs font-bold border border-gray-200 tap-target"
+            x-text="s === '' ? 'All' : s.charAt(0).toUpperCase()+s.slice(1)"
+          ></button>
+        </template>
+      </div>
+
+      <template x-for="f in filteredFeedback" :key="f.id">
+        <div class="card">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="badge" :class="'badge-' + f.sentiment" x-text="f.sentiment"></span>
+            <span class="text-xs text-gray-400 capitalize" x-text="f.category + ' · ' + new Date(f.created_at).toLocaleDateString('en-IN')"></span>
+          </div>
+          <p class="text-sm text-gray-700 leading-relaxed" x-text="f.message"></p>
+        </div>
+      </template>
+    </div>
+
+    <!-- ══════════ INSIGHTS TAB ══════════ -->
+    <div x-show="tab==='insights'" class="flex flex-col gap-4">
+      <div class="card bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
+        <p class="text-sm text-blue-900 font-bold mb-1">📊 Operational Intelligence</p>
+        <p class="text-xs text-blue-700 leading-relaxed">
+          100% rule-based analytics calculated directly from shift logs, grievance records, and anonymous worker feedback. Works completely offline with zero API keys.
+        </p>
+      </div>
+
+      <!-- Panel 1: Feedback Themes -->
+      <div class="card">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <h3 class="font-bold text-gray-900">💬 Feedback Themes</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Keyword dictionary engine (Pay, Safety, Facilities, Management, Workload, Wellbeing) with sentiment breakdown and urgent safety alerts.</p>
+          </div>
+        </div>
+        <button @click="runFeedbackThemes()" :disabled="loading.feedback" class="btn-primary w-full mt-2" style="background:#4F46E5">
+          <span x-text="loading.feedback ? '⏳ Processing…' : '💬 View Feedback Themes'"></span>
+        </button>
+      </div>
+
+      <!-- Panel 2: Grievance Summary -->
+      <div class="card">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <h3 class="font-bold text-gray-900">📋 Grievance Summary</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Statistical breakdown by category, resolution status, severity level, and overdue tracking (>3 days open without resolution).</p>
+          </div>
+        </div>
+        <button @click="runGrievanceSummary()" :disabled="loading.grievance" class="btn-primary w-full mt-2" style="background:#0F766E">
+          <span x-text="loading.grievance ? '⏳ Calculating…' : '📋 View Grievance Summary'"></span>
+        </button>
+      </div>
+
+      <!-- Panel 3: Overwork and Retention Risk -->
+      <div class="card">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <h3 class="font-bold text-gray-900">⚠️ Overwork and Retention Risk</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Identifies fatigue (>60h/week), back-to-back shifts (&lt;10h rest gap), and scores flight risk (Low / Medium / High) with specific diagnostic reasons.</p>
+          </div>
+        </div>
+        <button @click="runRetentionRisk()" :disabled="loading.risk" class="btn-primary w-full mt-2" style="background:#DC2626">
+          <span x-text="loading.risk ? '⏳ Evaluating…' : '⚠️ View Overwork & Retention Risk'"></span>
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Insights Modal ── -->
+<div x-show="modal.open" @click.self="modal.open=false" class="modal-overlay" x-cloak>
+  <div class="modal-box" style="max-width: 600px;">
+    <div class="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+      <h2 class="font-black text-gray-900 text-lg" x-text="modal.title"></h2>
+      <button @click="modal.open=false" class="text-gray-400 tap-target text-xl leading-none">✕</button>
+    </div>
+
+    <!-- 1. FEEDBACK THEMES MODAL -->
+    <template x-if="modal.type === 'feedback'">
+      <div class="flex flex-col gap-3">
+        <p class="text-xs text-gray-500 mb-1">Feedback messages categorized using keyword matching across both industries:</p>
+        <template x-for="theme in modal.themes" :key="theme.key">
+          <div class="p-3.5 rounded-xl border flex flex-col gap-2"
+            :class="theme.urgent ? 'border-red-200 bg-red-50' : (theme.count > 0 ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60')">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xl" x-text="theme.urgent ? '🚨' : '📌'"></span>
+                <span class="font-bold text-sm text-gray-900" x-text="theme.theme"></span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span x-show="theme.urgent" class="badge badge-urgent">Urgent</span>
+                <span class="font-bold text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" x-text="theme.count + ' mention' + (theme.count === 1 ? '' : 's')"></span>
+              </div>
+            </div>
+
+            <!-- Sentiment breakdown bar -->
+            <div x-show="theme.count > 0" class="flex gap-2 text-xs pt-1">
+              <span class="badge badge-positive" x-text="'😊 ' + theme.sentiment.positive + ' pos'"></span>
+              <span class="badge badge-neutral"  x-text="'😐 ' + theme.sentiment.neutral  + ' neu'"></span>
+              <span class="badge badge-negative" x-text="'😟 ' + theme.sentiment.negative + ' neg'"></span>
+            </div>
+
+            <!-- Sample message snippet -->
+            <template x-if="theme.sampleMessages && theme.sampleMessages.length > 0">
+              <p class="text-xs text-gray-600 italic bg-white/70 p-2 rounded-lg border border-gray-100 mt-1" x-text="'“' + theme.sampleMessages[0] + '”'"></p>
+            </template>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- 2. GRIEVANCE SUMMARY MODAL -->
+    <template x-if="modal.type === 'grievance' && modal.summary">
+      <div class="flex flex-col gap-4">
+        <!-- Overview Statement -->
+        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200">
+          <p class="text-sm text-gray-800 leading-relaxed font-medium" x-text="modal.summary.summaryText"></p>
+        </div>
+
+        <!-- Overdue Alert Box -->
+        <template x-if="modal.summary.overdueCount > 0">
+          <div class="bg-red-50 border-2 border-red-200 rounded-xl p-3.5">
+            <div class="flex items-center gap-2 text-red-800 font-bold text-sm mb-2">
+              <span>🚨</span>
+              <span x-text="modal.summary.overdueCount + ' Overdue Grievance' + (modal.summary.overdueCount === 1 ? '' : 's') + ' (>3 days without resolution)'"></span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <template x-for="og in modal.summary.overdueGrievances" :key="og.id">
+                <div class="bg-white p-2.5 rounded-lg border border-red-100 text-xs text-gray-700">
+                  <div class="flex justify-between font-semibold text-gray-900 mb-0.5">
+                    <span x-text="og.worker_name + ' (' + og.category + ')'"></span>
+                    <span class="text-red-600 font-bold" x-text="og.daysOpen + ' days open'"></span>
+                  </div>
+                  <p class="text-gray-600" x-text="og.description"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <!-- Status & Severity Grids -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="border border-gray-200 p-3 rounded-xl">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">By Status</p>
+            <div class="flex flex-col gap-1.5 text-xs">
+              <div class="flex justify-between"><span class="badge badge-open">Open</span><strong x-text="modal.summary.byStatus.open || 0"></strong></div>
+              <div class="flex justify-between"><span class="badge badge-review">Under Review</span><strong x-text="modal.summary.byStatus.under_review || 0"></strong></div>
+              <div class="flex justify-between"><span class="badge badge-resolved">Resolved</span><strong x-text="modal.summary.byStatus.resolved || 0"></strong></div>
+            </div>
+          </div>
+
+          <div class="border border-gray-200 p-3 rounded-xl">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">By Severity</p>
+            <div class="flex flex-col gap-1.5 text-xs">
+              <div class="flex justify-between"><span class="badge badge-high">High</span><strong x-text="modal.summary.bySeverity.high || 0"></strong></div>
+              <div class="flex justify-between"><span class="badge badge-medium">Medium</span><strong x-text="modal.summary.bySeverity.medium || 0"></strong></div>
+              <div class="flex justify-between"><span class="badge badge-low">Low</span><strong x-text="modal.summary.bySeverity.low || 0"></strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categories breakdown -->
+        <div class="border border-gray-200 p-3 rounded-xl">
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">By Category</p>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="cat in modal.summary.categories" :key="cat.name">
+              <span class="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-medium text-gray-700 capitalize"
+                x-text="cat.name + ': ' + cat.count"></span>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- 3. OVERWORK AND RETENTION RISK MODAL -->
+    <template x-if="modal.type === 'risk'">
+      <div class="flex flex-col gap-3">
+        <!-- Summary stats -->
+        <div class="grid grid-cols-3 gap-2 text-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+          <div>
+            <div class="text-xl font-black text-red-600" x-text="modal.riskList.filter(r => r.riskLevel === 'High').length"></div>
+            <div class="text-xs text-gray-500 font-semibold">High Risk</div>
+          </div>
+          <div>
+            <div class="text-xl font-black text-amber-600" x-text="modal.riskList.filter(r => r.riskLevel === 'Medium').length"></div>
+            <div class="text-xs text-gray-500 font-semibold">Medium Risk</div>
+          </div>
+          <div>
+            <div class="text-xl font-black text-green-600" x-text="modal.riskList.filter(r => r.riskLevel === 'Low').length"></div>
+            <div class="text-xs text-gray-500 font-semibold">Low Risk</div>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500">Worker flight risk evaluated from weekly hours (>60h threshold), rest intervals between consecutive shifts (&lt;10h), and pending grievances:</p>
+
+        <!-- Worker Risk List -->
+        <div class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
+          <template x-for="w in modal.riskList" :key="w.workerId">
+            <div class="p-3 rounded-xl border flex flex-col gap-1.5"
+              :class="w.riskLevel === 'High' ? 'border-red-200 bg-red-50/60' : (w.riskLevel === 'Medium' ? 'border-amber-200 bg-amber-50/50' : 'border-gray-200 bg-white')">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl" x-text="w.avatar_emoji"></span>
+                  <div>
+                    <span class="font-bold text-sm text-gray-900" x-text="w.name"></span>
+                    <span class="text-xs text-gray-400 block" x-text="w.role + ' · ' + w.totalHours + 'h logged'"></span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="badge"
+                    :class="w.riskLevel === 'High' ? 'badge-high' : (w.riskLevel === 'Medium' ? 'badge-medium' : 'badge-low')"
+                    x-text="w.riskLevel + ' Risk'"></span>
+                </div>
+              </div>
+
+              <!-- Diagnostic reasons -->
+              <ul class="text-xs text-gray-700 pl-4 list-disc space-y-0.5 mt-1">
+                <template x-for="r in w.reasons" :key="r">
+                  <li x-text="r"></li>
+                </template>
+              </ul>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <button @click="modal.open=false" class="btn-primary w-full mt-4" style="background:#374151">Close</button>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/vendor/alpine.min.js" defer></script>
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('employerApp', () => ({
+    industry: WW.Session.industry || 'construction',
+    tab: 'roster',
+    rosterSummary: [],
+    grievances: [],
+    feedback: [],
+    gFilter: { status: '', severity: '' },
+    fbFilter: '',
+    loading: { grievance: false, feedback: false, risk: false },
+    modal: { open: false, title: '', type: '', themes: [], summary: null, riskList: [] },
+
+    get ind() { return WW.INDUSTRIES[this.industry]; },
+    fmtH(h)   { return WW.fmtHours(h); },
+
+    get openGrievanceCount() {
+      return this.grievances.filter(g => g.status === 'open').length;
+    },
+
+    get filteredGrievances() {
+      return this.grievances.filter(g => {
+        if (this.gFilter.status   && g.status   !== this.gFilter.status)   return false;
+        if (this.gFilter.severity && g.severity !== this.gFilter.severity) return false;
+        return true;
+      });
+    },
+
+    get filteredFeedback() {
+      return this.feedback.filter(f => !this.fbFilter || f.sentiment === this.fbFilter);
+    },
+
+    get feedbackCounts() {
+      return {
+        positive: this.feedback.filter(f => f.sentiment === 'positive').length,
+        neutral:  this.feedback.filter(f => f.sentiment === 'neutral').length,
+        negative: this.feedback.filter(f => f.sentiment === 'negative').length,
+      };
+    },
+
+    async init() {
+      WW.applyIndustryTheme(this.industry);
+      await this.loadAll();
+    },
+
+    async setIndustry(ind) {
+      this.industry = ind;
+      WW.Session.industry = ind;
+      WW.applyIndustryTheme(ind);
+      await this.loadAll();
+    },
+
+    async loadAll() {
+      await Promise.all([
+        this.loadRoster(),
+        this.loadGrievances(),
+        this.loadFeedback(),
+      ]);
+      this.$nextTick(() => this.drawRosterChart());
+    },
+
+    async loadRoster() {
+      try { this.rosterSummary = await WW.apiFetch(`/api/shifts/summary?industry=${this.industry}`); }
+      catch(e) { this.rosterSummary = []; }
+    },
+
+    async loadGrievances() {
+      try { this.grievances = await WW.apiFetch(`/api/grievances?industry=${this.industry}`); }
+      catch(e) { this.grievances = []; }
+    },
+
+    async loadFeedback() {
+      try { this.feedback = await WW.apiFetch(`/api/feedback?industry=${this.industry}`); }
+      catch(e) { this.feedback = []; }
+    },
+
+    async updateGrievance(id, status, severity) {
+      try {
+        await WW.apiFetch(`/api/grievances/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status, severity }),
+        });
+        await this.loadGrievances();
+      } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    drawRosterChart() {
+      const canvas = document.getElementById('rosterChart');
+      if (!canvas || !this.rosterSummary.length) return;
+      const labels = this.rosterSummary.map(w => w.name.split(' ')[0]);
+      const data   = this.rosterSummary.map(w => w.total_hours);
+      const colors = this.rosterSummary.map(w => w.fatigue_weekly ? '#DC2626' : (this.industry === 'college' ? '#4F46E5' : '#F97316'));
+      if (canvas._chartInstance) canvas._chartInstance.destroy();
+      canvas._chartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 5, label: 'Hours this week' }] },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.raw}h` } } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { callback: v => v + 'h' } },
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          },
+        },
+      });
+    },
+
+    async runFeedbackThemes() {
+      this.loading.feedback = true;
+      try {
+        const res = await WW.apiFetch('/api/insights/feedback-themes', {
+          method: 'POST',
+          body: JSON.stringify({ industry: this.industry }),
+        });
+        this.modal = {
+          open: true,
+          title: '💬 Feedback Themes (' + this.ind.label + ')',
+          type: 'feedback',
+          themes: res.result || [],
+          summary: null,
+          riskList: [],
+        };
+      } catch(e) {
+        alert('Error loading feedback themes: ' + e.message);
+      }
+      this.loading.feedback = false;
+    },
+
+    async runGrievanceSummary() {
+      this.loading.grievance = true;
+      try {
+        const res = await WW.apiFetch('/api/insights/grievance-summary', {
+          method: 'POST',
+          body: JSON.stringify({ industry: this.industry }),
+        });
+        this.modal = {
+          open: true,
+          title: '📋 Grievance Summary (' + this.ind.label + ')',
+          type: 'grievance',
+          themes: [],
+          summary: res.result || null,
+          riskList: [],
+        };
+      } catch(e) {
+        alert('Error loading grievance summary: ' + e.message);
+      }
+      this.loading.grievance = false;
+    },
+
+    async runRetentionRisk() {
+      this.loading.risk = true;
+      try {
+        const res = await WW.apiFetch('/api/insights/retention-risk', {
+          method: 'POST',
+          body: JSON.stringify({ industry: this.industry }),
+        });
+        this.modal = {
+          open: true,
+          title: '⚠️ Overwork & Retention Risk (' + this.ind.label + ')',
+          type: 'risk',
+          themes: [],
+          summary: null,
+          riskList: res.result || [],
+        };
+      } catch(e) {
+        alert('Error loading retention risk: ' + e.message);
+      }
+      this.loading.risk = false;
+    },
+  }));
+});
+</script>
+</body>
+</html>

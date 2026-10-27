@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkWise – My Payslip</title>
+  <script src="/vendor/tailwind.js"></script>
+  <link  rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="bg-gray-50 min-h-dvh pb-8">
+
+<div x-data="payslipApp()" x-init="init()" class="max-w-lg mx-auto">
+
+  <!-- ── Top Bar ── -->
+  <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <a href="/worker.html" class="text-gray-400 tap-target flex items-center">← Back</a>
+    <h1 class="font-black text-gray-900 text-base" x-text="t('title')"></h1>
+    <!-- Language switcher -->
+    <div class="flex gap-1">
+      <template x-for="l in langs" :key="l.code">
+        <button
+          @click="setLang(l.code)"
+          :class="lang === l.code ? 'active' : ''"
+          class="lang-btn text-xs px-2 py-1"
+          x-text="l.label"
+        ></button>
+      </template>
+    </div>
+  </header>
+
+  <main class="px-4 mt-5 flex flex-col gap-4">
+
+    <!-- ── Worker Header ── -->
+    <div class="card flex items-center gap-4">
+      <span class="text-4xl" x-text="worker.avatar_emoji"></span>
+      <div>
+        <p class="font-black text-lg text-gray-900" x-text="worker.name"></p>
+        <p class="text-sm text-gray-500" x-text="worker.role"></p>
+        <p class="text-xs text-gray-400" x-text="t('weekLabel') + ' ' + weekLabel"></p>
+      </div>
+    </div>
+
+    <!-- ── Pay Breakdown ── -->
+    <div class="card">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3" x-text="t('breakdown')"></p>
+
+      <!-- Base pay -->
+      <div class="pay-row">
+        <div>
+          <span class="label font-medium text-gray-800" x-text="t('base')"></span>
+          <p class="text-xs text-gray-400" x-text="`${fmtH(pay.baseHours)} × ${fmtCur(worker.hourly_rate)}/hr`"></p>
+        </div>
+        <span class="amount" x-text="fmtCur(pay.basePay)"></span>
+      </div>
+
+      <!-- Overtime pay -->
+      <div class="pay-row">
+        <div>
+          <span class="label font-medium text-gray-800" x-text="t('overtime')"></span>
+          <p class="text-xs text-gray-400" x-text="`${fmtH(pay.overtimeHours)} × ${fmtCur(worker.hourly_rate * 1.5)}/hr (1.5×)`"></p>
+        </div>
+        <span class="amount text-amber-600" x-text="fmtCur(pay.overtimePay)"></span>
+      </div>
+
+      <!-- Gross -->
+      <div class="pay-row">
+        <span class="label font-medium text-gray-800" x-text="t('gross')"></span>
+        <span class="amount" x-text="fmtCur(pay.gross)"></span>
+      </div>
+
+      <!-- Deduction -->
+      <div class="pay-row">
+        <div>
+          <span class="label font-medium text-gray-800" x-text="t('deduction')"></span>
+          <p class="text-xs text-gray-400" x-text="t('deductionNote')"></p>
+        </div>
+        <span class="amount text-red-500" x-text="'− ' + fmtCur(pay.deduction)"></span>
+      </div>
+
+      <!-- Net pay -->
+      <div class="pay-row pay-total border-t-2 border-gray-200 mt-1 pt-3">
+        <span class="font-black text-lg text-gray-900" x-text="t('net')"></span>
+        <span class="amount" x-text="fmtCur(pay.net)"></span>
+      </div>
+    </div>
+
+    <!-- ── Plain Language Summary ── -->
+    <div class="card bg-blue-50 border border-blue-100">
+      <p class="text-sm text-blue-800 font-medium leading-relaxed" x-text="paySummaryText()"></p>
+    </div>
+
+    <!-- ── Listen + Dispute buttons ── -->
+    <div class="flex flex-col gap-3">
+      <button
+        @click="listenPayslip()"
+        :class="speaking ? 'opacity-70' : ''"
+        class="btn-primary w-full"
+        style="background:#0369A1"
+      >
+        <span x-text="speaking ? '🔊 ' + t('listening') : '🔊 ' + t('listen')"></span>
+      </button>
+
+      <button
+        @click="disputePayslip()"
+        class="btn-primary w-full"
+        style="background:#DC2626"
+      >📢 <span x-text="t('dispute')"></span></button>
+    </div>
+
+    <!-- ── Dispute confirmation ── -->
+    <p x-show="disputeMsg" x-text="disputeMsg" class="text-center text-sm font-semibold text-green-700 card"></p>
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/vendor/alpine.min.js" defer></script>
+<script>
+// ─── i18n strings ──────────────────────────────────────────────────────────
+const I18N = {
+  en: {
+    title:         'Your Payslip',
+    weekLabel:     'Week of',
+    breakdown:     'Pay Breakdown',
+    base:          'Base Pay',
+    overtime:      'Overtime Pay',
+    gross:         'Gross Pay',
+    deduction:     'Tax Deduction',
+    deductionNote: '10% income tax (estimated)',
+    net:           'Net Pay',
+    listen:        'Listen to Payslip',
+    listening:     'Reading…',
+    dispute:       'Dispute This Payslip',
+    disputeDone:   '✅ Dispute submitted. HR will review it.',
+    summary: (name, net, base, ot) =>
+      `Hello ${name}. Your payslip for this week: Base pay is ${base}. ` +
+      (ot > 0 ? `Overtime pay is ${ot}. ` : '') +
+      `After a 10 percent tax deduction, your net take-home pay is ${net}. ` +
+      `If anything looks wrong, please tap the Dispute button below.`,
+  },
+  ta: {
+    title:         'உங்கள் சம்பள சீட்டு',
+    weekLabel:     'வாரம்:',
+    breakdown:     'சம்பள விவரம்',
+    base:          'அடிப்படை ஊதியம்',
+    overtime:      'மேலதிக ஊதியம்',
+    gross:         'மொத்த ஊதியம்',
+    deduction:     'வரி கழிவு',
+    deductionNote: '10% வருமான வரி (மதிப்பீடு)',
+    net:           'நிகர ஊதியம்',
+    listen:        'சம்பள சீட்டை கேளுங்கள்',
+    listening:     'படிக்கிறது…',
+    dispute:       'சம்பளத்தை மறுக்கவும்',
+    disputeDone:   '✅ மனு சமர்ப்பிக்கப்பட்டது. HR பரிசீலிக்கும்.',
+    summary: (name, net, base, ot) =>
+      `வணக்கம் ${name}. இந்த வாரத்திற்கான உங்கள் சம்பள சீட்டு: அடிப்படை ஊதியம் ${base}. ` +
+      (ot ? `மேலதிக ஊதியம் ${ot}. ` : '') +
+      `பத்து சதவீத வரி கழித்த பிறகு, நிகர சம்பளம் ${net}.`,
+  },
+  hi: {
+    title:         'आपकी वेतन पर्ची',
+    weekLabel:     'सप्ताह:',
+    breakdown:     'वेतन विवरण',
+    base:          'मूल वेतन',
+    overtime:      'अतिरिक्त वेतन',
+    gross:         'सकल वेतन',
+    deduction:     'कर कटौती',
+    deductionNote: '10% आयकर (अनुमानित)',
+    net:           'शुद्ध वेतन',
+    listen:        'वेतन पर्ची सुनें',
+    listening:     'पढ़ रहा है…',
+    dispute:       'इस वेतन पर्ची पर आपत्ति करें',
+    disputeDone:   '✅ आपत्ति दर्ज की गई। HR समीक्षा करेगा।',
+    summary: (name, net, base, ot) =>
+      `नमस्ते ${name}। इस सप्ताह की आपकी वेतन पर्ची: मूल वेतन ${base} है। ` +
+      (ot ? `अतिरिक्त वेतन ${ot} है। ` : '') +
+      `दस प्रतिशत कर कटौती के बाद, आपका शुद्ध वेतन ${net} है।`,
+  },
+};
+
+document.addEventListener('alpine:init', () => {
+  Alpine.data('payslipApp', () => ({
+    worker: {},
+    shifts: [],
+    lang: 'en',
+    speaking: false,
+    disputeMsg: '',
+    langs: [
+      { code: 'en', label: 'EN' },
+      { code: 'ta', label: 'தமிழ்' },
+      { code: 'hi', label: 'हिंदी' },
+    ],
+
+    t(key) { return I18N[this.lang]?.[key] || I18N.en[key] || key; },
+
+    get weekLabel() {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    },
+
+    get pay() {
+      const rate = this.worker.hourly_rate || 0;
+      let baseHours = 0, overtimeHours = 0;
+      this.shifts.forEach(s => {
+        baseHours     += Math.min(s.hours_worked || 0, 8);
+        overtimeHours += s.overtime_hours || 0;
+      });
+      const basePay     = Math.round(baseHours * rate * 100) / 100;
+      const overtimePay = Math.round(overtimeHours * rate * 1.5 * 100) / 100;
+      const gross       = Math.round((basePay + overtimePay) * 100) / 100;
+      const deduction   = Math.round(gross * 0.10 * 100) / 100;
+      const net         = Math.round((gross - deduction) * 100) / 100;
+      return { baseHours, overtimeHours, basePay, overtimePay, gross, deduction, net };
+    },
+
+    fmtH(h) { return WW.fmtHours(h); },
+    fmtCur(n) { return WW.fmtCurrency(n); },
+
+    paySummaryText() {
+      const p = this.pay;
+      const fn = I18N[this.lang]?.summary || I18N.en.summary;
+      return fn(
+        this.worker.name || '…',
+        WW.fmtCurrency(p.net),
+        WW.fmtCurrency(p.basePay),
+        p.overtimePay > 0 ? WW.fmtCurrency(p.overtimePay) : '',
+      );
+    },
+
+    async init() {
+      const wid = WW.Session.workerId;
+      if (!wid) { window.location.href = '/'; return; }
+      WW.applyIndustryTheme(WW.Session.industry);
+      try {
+        this.worker = await WW.apiFetch(`/api/workers/${wid}`);
+        this.shifts = await WW.apiFetch(`/api/shifts?worker_id=${wid}&week=${WW.weekStartISO()}`);
+        // Apply worker's preferred language
+        if (['en','ta','hi'].includes(this.worker.preferred_language)) {
+          this.lang = this.worker.preferred_language;
+        }
+      } catch(e) { console.error(e); }
+    },
+
+    setLang(code) { this.lang = code; },
+
+    listenPayslip() {
+      const text = this.paySummaryText();
+      if (!window.speechSynthesis) { alert('Speech not supported in this browser.'); return; }
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = this.lang === 'ta' ? 'ta-IN' : this.lang === 'hi' ? 'hi-IN' : 'en-IN';
+      utt.rate = 0.9;
+      utt.onstart = () => { this.speaking = true; };
+      utt.onend   = () => { this.speaking = false; };
+      utt.onerror = () => { this.speaking = false; };
+      window.speechSynthesis.speak(utt);
+    },
+
+    async disputePayslip() {
+      const desc = `Payslip dispute for week of ${this.weekLabel}. Reported via payslip page. Net pay shown: ${WW.fmtCurrency(this.pay.net)}. Please review.`;
+      try {
+        await WW.apiFetch('/api/grievances', {
+          method: 'POST',
+          body: JSON.stringify({
+            worker_id: this.worker.id,
+            category: 'pay',
+            description: desc,
+            severity: 'medium',
+            is_payslip_dispute: 1,
+          }),
+        });
+        this.disputeMsg = I18N[this.lang]?.disputeDone || I18N.en.disputeDone;
+        setTimeout(() => { this.disputeMsg = ''; }, 5000);
+      } catch(e) { this.disputeMsg = '❌ ' + e.message; }
+    },
+  }));
+});
+</script>
+</body>
+</html>

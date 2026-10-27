@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkWise – My Dashboard</title>
+  <script src="/vendor/tailwind.js"></script>
+  <link  rel="stylesheet" href="/css/style.css" />
+  <script src="/vendor/chart.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-dvh pb-6">
+
+<div x-data="workerApp()" x-init="init()" class="max-w-lg mx-auto">
+
+  <!-- ── Top Bar ── -->
+  <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <a href="/" class="text-gray-400 tap-target flex items-center">← Back</a>
+    <div class="text-center">
+      <div class="font-black text-gray-900 text-base" x-text="worker.name || 'Loading…'"></div>
+      <div class="text-xs text-gray-400" x-text="worker.role"></div>
+    </div>
+    <span class="industry-badge text-xs" x-text="ind.icon + ' ' + ind.label"></span>
+  </header>
+
+  <!-- ── Fatigue Alerts ── -->
+  <template x-if="summary.fatigue_weekly">
+    <div class="alert-fatigue high mx-4 mt-4">
+      ⚠️ You have worked <strong x-text="fmtH(summary.total_hours_this_week)"></strong> this week — over the 60-hour limit. Please rest.
+    </div>
+  </template>
+  <template x-if="!summary.fatigue_weekly && summary.fatigue_consecutive">
+    <div class="alert-fatigue mx-4 mt-4">
+      ⚠️ Insufficient rest detected between recent shifts. Please ensure 8 hours between shifts.
+    </div>
+  </template>
+
+  <main class="px-4 mt-4 flex flex-col gap-4">
+
+    <!-- ── Check In / Out Button ── -->
+    <div class="card">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Today's Attendance</p>
+      <button
+        @click="toggleClock()"
+        :class="clockedIn ? 'clocked-in' : 'clocked-out'"
+        :disabled="clockLoading"
+        class="btn-checkin"
+      >
+        <span x-text="clockLoading ? '⏳ Please wait…' : (clockedIn ? '🔴 Clock Out' : '🟢 Clock In')"></span>
+      </button>
+
+      <!-- Elapsed timer when clocked in -->
+      <div x-show="clockedIn" class="mt-3 text-center text-gray-600 font-mono text-lg font-bold">
+        ⏱ <span x-text="elapsedDisplay"></span>
+      </div>
+
+      <!-- Last clock event -->
+      <p x-show="lastClockMsg" x-text="lastClockMsg" class="text-center text-xs text-gray-400 mt-2"></p>
+    </div>
+
+    <!-- ── Weekly Summary Card ── -->
+    <div class="card">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">This Week</p>
+      <div class="grid grid-cols-3 gap-3 text-center mb-4">
+        <div>
+          <div class="text-2xl font-black" :class="summary.total_hours_this_week > 60 ? 'overtime-text' : 'text-gray-900'" x-text="fmtH(summary.total_hours_this_week)"></div>
+          <div class="text-xs text-gray-400 mt-0.5">Hours</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black text-amber-600" x-text="fmtH(summary.total_overtime || 0)"></div>
+          <div class="text-xs text-gray-400 mt-0.5">Overtime</div>
+        </div>
+        <div>
+          <div class="text-2xl font-black text-green-600" x-text="fmtCur(estimatedPay)"></div>
+          <div class="text-xs text-gray-400 mt-0.5">Est. Pay</div>
+        </div>
+      </div>
+      <!-- Chart -->
+      <canvas id="weekChart" height="120"></canvas>
+      <!-- Payslip link -->
+      <a href="/payslip.html"
+        class="btn-primary mt-4 w-full text-center no-underline block"
+        style="background:#16A34A; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+        📄 View My Payslip
+      </a>
+    </div>
+
+    <!-- ── Tabs ── -->
+    <div class="card p-0 overflow-hidden">
+      <div class="flex border-b border-gray-100">
+        <button @click="tab='grievance'" :class="tab==='grievance' ? 'active' : ''" class="nav-tab">
+          <span class="tab-icon">📢</span> Grievance
+        </button>
+        <button @click="tab='feedback'" :class="tab==='feedback' ? 'active' : ''" class="nav-tab">
+          <span class="tab-icon">💬</span> Feedback
+        </button>
+        <button @click="tab='history'" :class="tab==='history' ? 'active' : ''" class="nav-tab">
+          <span class="tab-icon">📋</span> My Reports
+        </button>
+      </div>
+
+      <!-- ── Grievance Tab ── -->
+      <div x-show="tab==='grievance'" class="p-4 flex flex-col gap-4">
+        <p class="text-sm text-gray-500">Raise a concern. Your name is attached, and only the employer can see it.</p>
+
+        <!-- Category icon grid -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Category</label>
+          <div class="category-grid">
+            <template x-for="cat in ind.categories" :key="cat.key">
+              <button
+                type="button"
+                @click="grievance.category = cat.key"
+                :class="grievance.category === cat.key ? 'selected' : ''"
+                class="category-tile"
+              >
+                <span class="emoji" x-text="cat.icon"></span>
+                <span x-text="cat.label"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Severity -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Severity</label>
+          <div class="flex gap-2">
+            <template x-for="sev in ['low','medium','high']" :key="sev">
+              <button
+                type="button"
+                @click="grievance.severity = sev"
+                :class="grievance.severity === sev ? 'ring-2 ring-offset-1' : ''"
+                class="flex-1 py-2 rounded-lg text-sm font-bold capitalize"
+                :style="grievance.severity === sev ? `ring-color:var(--primary); background:var(--bg-light); color:var(--primary)` : 'background:#F8FAFC; color:#64748B'"
+                x-text="sev"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Description + Mic -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Description</label>
+          <div class="flex gap-2 items-start">
+            <textarea
+              x-model="grievance.description"
+              rows="4"
+              placeholder="Describe your concern…"
+              class="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 resize-none focus:outline-none focus:ring-2"
+            ></textarea>
+            <button
+              type="button"
+              @click="toggleMic()"
+              :class="micActive ? 'recording' : ''"
+              class="btn-mic mt-1"
+              title="Voice to text"
+            >🎤</button>
+          </div>
+          <p x-show="micActive" class="text-xs text-red-500 mt-1">🔴 Listening… speak now</p>
+        </div>
+
+        <button
+          @click="submitGrievance()"
+          :disabled="!grievance.description || !grievance.category || grievanceLoading"
+          class="btn-primary w-full"
+          :class="!grievance.description || !grievance.category ? 'opacity-40 cursor-not-allowed' : ''"
+        >
+          <span x-text="grievanceLoading ? 'Submitting…' : '📢 Submit Grievance'"></span>
+        </button>
+        <p x-show="grievanceMsg" x-text="grievanceMsg" class="text-center text-sm font-semibold text-green-600"></p>
+      </div>
+
+      <!-- ── Feedback Tab ── -->
+      <div x-show="tab==='feedback'" class="p-4 flex flex-col gap-4">
+        <p class="text-sm text-gray-500">This is 100% anonymous. No name or ID is stored.</p>
+
+        <!-- Sentiment -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">How are you feeling?</label>
+          <div class="flex gap-2">
+            <template x-for="s in [{k:'positive',e:'😊'},{k:'neutral',e:'😐'},{k:'negative',e:'😟'}]" :key="s.k">
+              <button
+                type="button"
+                @click="feedback.sentiment = s.k"
+                :class="feedback.sentiment === s.k ? 'ring-2 ring-offset-1' : ''"
+                class="flex-1 py-3 rounded-xl text-2xl transition-all"
+                :style="feedback.sentiment === s.k ? 'ring-color:var(--primary); background:var(--bg-light)' : 'background:#F8FAFC'"
+                x-text="s.e"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Topic</label>
+          <select x-model="feedback.category" class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-white text-gray-800 font-medium">
+            <option value="wellbeing">Wellbeing</option>
+            <option value="safety">Safety</option>
+            <option value="management">Management</option>
+            <option value="tools">Tools / Equipment</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <textarea
+          x-model="feedback.message"
+          rows="3"
+          placeholder="Your anonymous message…"
+          class="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 resize-none focus:outline-none focus:ring-2"
+        ></textarea>
+
+        <button
+          @click="submitFeedback()"
+          :disabled="!feedback.message || feedbackLoading"
+          class="btn-primary w-full"
+          :class="!feedback.message ? 'opacity-40 cursor-not-allowed' : ''"
+        >
+          <span x-text="feedbackLoading ? 'Sending…' : '💬 Send Anonymously'"></span>
+        </button>
+        <p x-show="feedbackMsg" x-text="feedbackMsg" class="text-center text-sm font-semibold text-green-600"></p>
+      </div>
+
+      <!-- ── History Tab ── -->
+      <div x-show="tab==='history'" class="p-4">
+        <p class="text-xs text-gray-400 mb-3">Your grievances (employer can see your name)</p>
+        <template x-if="myGrievances.length === 0">
+          <p class="text-center text-gray-400 py-6">No grievances submitted yet.</p>
+        </template>
+        <div class="flex flex-col gap-3">
+          <template x-for="g in myGrievances" :key="g.id">
+            <div class="border border-gray-100 rounded-xl p-3">
+              <div class="flex items-start justify-between gap-2 mb-1">
+                <span class="font-semibold text-sm text-gray-800 capitalize" x-text="g.category"></span>
+                <div class="flex gap-1.5 flex-shrink-0">
+                  <span class="badge" :class="'badge-' + g.status.replace('_','-')" x-text="g.status.replace('_',' ')"></span>
+                  <span class="badge" :class="'badge-' + g.severity" x-text="g.severity"></span>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 line-clamp-2" x-text="g.description"></p>
+              <p class="text-xs text-gray-300 mt-1.5" x-text="new Date(g.created_at).toLocaleDateString()"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/vendor/alpine.min.js" defer></script>
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('workerApp', () => ({
+    worker: {},
+    summary: {},
+    shifts: [],
+    myGrievances: [],
+    tab: 'grievance',
+    clockedIn: false,
+    clockLoading: false,
+    lastClockMsg: '',
+    clockInTime: null,
+    elapsedDisplay: '00:00:00',
+    elapsedTimer: null,
+    micActive: false,
+    recognition: null,
+    grievanceLoading: false,
+    grievanceMsg: '',
+    feedbackLoading: false,
+    feedbackMsg: '',
+    grievance: { category: '', severity: 'medium', description: '' },
+    feedback: { sentiment: 'neutral', category: 'wellbeing', message: '' },
+
+    get ind() { return WW.INDUSTRIES[WW.Session.industry]; },
+    fmtH(h) { return WW.fmtHours(h); },
+    fmtCur(n) { return WW.fmtCurrency(n); },
+
+    get estimatedPay() {
+      if (!this.worker.hourly_rate || !this.summary) return 0;
+      const base = (this.summary.total_hours_this_week || 0) * this.worker.hourly_rate;
+      const overtime = (this.summary.total_overtime || 0) * this.worker.hourly_rate * 0.5;
+      return Math.round((base + overtime) * 100) / 100;
+    },
+
+    async init() {
+      const wid = WW.Session.workerId;
+      if (!wid) { window.location.href = '/'; return; }
+      WW.applyIndustryTheme(WW.Session.industry);
+
+      try {
+        this.worker = await WW.apiFetch(`/api/workers/${wid}`);
+        await this.loadSummary();
+        await this.loadShifts();
+        await this.checkClockStatus();
+        await this.loadMyGrievances();
+        this.$nextTick(() => this.drawChart());
+      } catch(e) { console.error(e); }
+    },
+
+    async loadSummary() {
+      const rows = await WW.apiFetch(`/api/shifts/summary?industry=${this.worker.industry}`);
+      const mine = rows.find(r => r.id == this.worker.id);
+      if (mine) this.summary = mine;
+    },
+
+    async loadShifts() {
+      this.shifts = await WW.apiFetch(`/api/shifts?worker_id=${this.worker.id}&week=${WW.weekStartISO()}`);
+    },
+
+    async loadMyGrievances() {
+      this.myGrievances = await WW.apiFetch(`/api/grievances/worker/${this.worker.id}`);
+    },
+
+    async checkClockStatus() {
+      const s = await WW.apiFetch(`/api/shifts/status/${this.worker.id}`);
+      this.clockedIn = s.clocked_in;
+      if (s.clocked_in && s.shift) {
+        this.clockInTime = new Date(s.shift.clock_in.replace(' ','T'));
+        this.startElapsedTimer();
+      }
+    },
+
+    startElapsedTimer() {
+      this.elapsedTimer = setInterval(() => {
+        if (!this.clockInTime) return;
+        const diff = Math.floor((Date.now() - this.clockInTime) / 1000);
+        const h = Math.floor(diff / 3600).toString().padStart(2,'0');
+        const m = Math.floor((diff % 3600) / 60).toString().padStart(2,'0');
+        const s = (diff % 60).toString().padStart(2,'0');
+        this.elapsedDisplay = `${h}:${m}:${s}`;
+      }, 1000);
+    },
+
+    async toggleClock() {
+      this.clockLoading = true;
+      try {
+        if (!this.clockedIn) {
+          await WW.apiFetch('/api/shifts/clockin', { method: 'POST', body: JSON.stringify({ worker_id: this.worker.id }) });
+          this.clockedIn = true;
+          this.clockInTime = new Date();
+          this.startElapsedTimer();
+          this.lastClockMsg = `Clocked in at ${new Date().toLocaleTimeString()}`;
+        } else {
+          const res = await WW.apiFetch('/api/shifts/clockout', { method: 'POST', body: JSON.stringify({ worker_id: this.worker.id }) });
+          this.clockedIn = false;
+          clearInterval(this.elapsedTimer);
+          this.elapsedDisplay = '00:00:00';
+          this.lastClockMsg = `Clocked out · ${WW.fmtHours(res.hours_worked)} worked`;
+          await this.loadSummary();
+          await this.loadShifts();
+          this.$nextTick(() => this.drawChart());
+        }
+      } catch(e) {
+        this.lastClockMsg = e.message;
+      }
+      this.clockLoading = false;
+    },
+
+    toggleMic() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { alert('Voice input not supported in this browser.'); return; }
+      if (this.micActive) {
+        this.recognition?.stop();
+        this.micActive = false;
+        return;
+      }
+      this.recognition = new SR();
+      this.recognition.lang = 'en-IN';
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        this.grievance.description += (this.grievance.description ? ' ' : '') + text;
+      };
+      this.recognition.onend = () => { this.micActive = false; };
+      this.recognition.start();
+      this.micActive = true;
+    },
+
+    async submitGrievance() {
+      if (!this.grievance.description || !this.grievance.category) return;
+      this.grievanceLoading = true;
+      try {
+        await WW.apiFetch('/api/grievances', {
+          method: 'POST',
+          body: JSON.stringify({
+            worker_id: this.worker.id,
+            category: this.grievance.category,
+            description: this.grievance.description,
+            severity: this.grievance.severity,
+          }),
+        });
+        this.grievanceMsg = '✅ Grievance submitted. An admin will review it.';
+        this.grievance = { category: '', severity: 'medium', description: '' };
+        await this.loadMyGrievances();
+        setTimeout(() => { this.grievanceMsg = ''; }, 4000);
+      } catch(e) { this.grievanceMsg = '❌ ' + e.message; }
+      this.grievanceLoading = false;
+    },
+
+    async submitFeedback() {
+      if (!this.feedback.message) return;
+      this.feedbackLoading = true;
+      try {
+        await WW.apiFetch('/api/feedback', {
+          method: 'POST',
+          body: JSON.stringify({
+            industry: this.worker.industry,
+            category: this.feedback.category,
+            sentiment: this.feedback.sentiment,
+            message: this.feedback.message,
+          }),
+        });
+        this.feedbackMsg = '✅ Feedback sent anonymously. Thank you!';
+        this.feedback = { sentiment: 'neutral', category: 'wellbeing', message: '' };
+        setTimeout(() => { this.feedbackMsg = ''; }, 4000);
+      } catch(e) { this.feedbackMsg = '❌ ' + e.message; }
+      this.feedbackLoading = false;
+    },
+
+    drawChart() {
+      const canvas = document.getElementById('weekChart');
+      if (!canvas || !this.shifts.length) return;
+      // Build last 7 days
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        days.push(d.toISOString().slice(0,10));
+      }
+      const hoursMap = {};
+      this.shifts.forEach(s => { hoursMap[s.date] = (hoursMap[s.date] || 0) + s.hours_worked; });
+      const labels = days.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short' }));
+      const data   = days.map(d => Math.round((hoursMap[d] || 0) * 10) / 10);
+      const colors = data.map(h => h > 8 ? '#DC2626' : '#16A34A');
+
+      if (canvas._chartInstance) canvas._chartInstance.destroy();
+      canvas._chartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, label: 'Hours' }] },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 14, ticks: { stepSize: 2 }, grid: { color: '#F1F5F9' } },
+            x: { grid: { display: false } },
+          },
+        },
+      });
+    },
+  }));
+});
+</script>
+</body>
+</html>

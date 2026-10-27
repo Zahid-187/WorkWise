@@ -1,0 +1,263 @@
+/* WorkWise – Global Styles
+   Tailwind handles most styling; this file adds:
+   - CSS custom properties for industry theming
+   - Accessibility: large tap targets, high contrast
+   - Utility classes not covered by Tailwind Play CDN
+*/
+
+:root {
+  --primary:   #F97316;  /* orange – construction default */
+  --accent:    #1E3A5F;
+  --primary-dark: #C2580D;
+  --bg-light:  #FFF7ED;
+  --tap-min:   48px;
+}
+
+[data-industry="college"] {
+  --primary:      #4F46E5;
+  --accent:       #0F766E;
+  --primary-dark: #3730A3;
+  --bg-light:     #EEF2FF;
+}
+
+/* ─── Global resets ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #F8FAFC;
+  color: #0F172A;
+  margin: 0;
+  min-height: 100dvh;
+}
+
+/* ─── Accessibility: minimum tap target ─────────────────────────── */
+button, a, select, input[type="submit"], .tap-target {
+  min-height: var(--tap-min);
+  min-width:  var(--tap-min);
+}
+
+/* ─── Primary colour overrides (CSS-var driven) ─────────────────── */
+.btn-primary {
+  background-color: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--tap-min);
+}
+.btn-primary:hover { background-color: var(--primary-dark); }
+
+/* ─── Check-in / Check-out giant button ────────────────────────── */
+.btn-checkin {
+  width: 100%;
+  height: 90px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+.btn-checkin:active { transform: scale(0.97); }
+.btn-checkin.clocked-out { background: #16A34A; color: #fff; }
+.btn-checkin.clocked-in  { background: #DC2626; color: #fff; }
+
+/* ─── Industry badge ─────────────────────────────────────────────── */
+.industry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ─── Fatigue alert ──────────────────────────────────────────────── */
+.alert-fatigue {
+  background: #FEF3C7;
+  border-left: 4px solid #F59E0B;
+  color: #92400E;
+  padding: 0.85rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+.alert-fatigue.high {
+  background: #FEE2E2;
+  border-left-color: #DC2626;
+  color: #7F1D1D;
+}
+
+/* ─── Category icon grid ─────────────────────────────────────────── */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.category-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.5rem;
+  border: 2px solid #E2E8F0;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  min-height: var(--tap-min);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.category-tile .emoji { font-size: 1.6rem; }
+.category-tile.selected {
+  border-color: var(--primary);
+  background: var(--bg-light);
+  color: var(--primary);
+}
+
+/* ─── Status badges ──────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge-open       { background:#FEE2E2; color:#991B1B; }
+.badge-review     { background:#FEF3C7; color:#92400E; }
+.badge-resolved   { background:#D1FAE5; color:#065F46; }
+.badge-positive   { background:#D1FAE5; color:#065F46; }
+.badge-neutral    { background:#F1F5F9; color:#475569; }
+.badge-negative   { background:#FEE2E2; color:#991B1B; }
+.badge-high       { background:#FEE2E2; color:#991B1B; }
+.badge-medium     { background:#FEF3C7; color:#92400E; }
+.badge-low        { background:#D1FAE5; color:#065F46; }
+.badge-urgent     { background:#DC2626; color:#fff; }
+
+/* ─── Overtime highlight ─────────────────────────────────────────── */
+.overtime-row { background: #FEF2F2; }
+.overtime-text { color: #DC2626; font-weight: 700; }
+
+/* ─── AI result modal ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+.modal-box {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  max-width: 520px;
+  width: 100%;
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+
+/* ─── Mic button ─────────────────────────────────────────────────── */
+.btn-mic {
+  background: #E0E7FF;
+  color: #3730A3;
+  border: none;
+  border-radius: 50%;
+  width: 48px; height: 48px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.btn-mic.recording { background: #FEE2E2; color: #DC2626; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+/* ─── Nav tabs ───────────────────────────────────────────────────── */
+.nav-tab {
+  flex: 1;
+  text-align: center;
+  padding: 0.9rem 0.5rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #64748B;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.nav-tab .tab-icon { font-size: 1.3rem; }
+
+/* ─── Card ───────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ─── Payslip row ────────────────────────────────────────────────── */
+.pay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 1rem;
+}
+.pay-row:last-child { border-bottom: none; }
+.pay-row .label { color: #64748B; }
+.pay-row .amount { font-weight: 700; color: #0F172A; }
+.pay-total .amount { font-size: 1.3rem; color: #16A34A; }
+
+/* ─── Language switcher ──────────────────────────────────────────── */
+.lang-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid #E2E8F0;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  transition: border-color 0.15s, background 0.15s;
+}
+.lang-btn.active {
+  border-color: var(--primary);
+  background: var(--bg-light);
+  color: var(--primary);
+}
+
+/* ─── Responsive helpers ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hide-mobile { display: none !important; }
+}
