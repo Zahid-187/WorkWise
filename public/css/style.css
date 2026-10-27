@@ -20,6 +20,8 @@
   --bg-light:     #EEF2FF;
 }
 
+[x-cloak] { display: none !important; }
+
 /* ─── Global resets ─────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 

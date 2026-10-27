@@ -76,6 +76,14 @@
       </div>
 
       <div x-show="loadingWorkers" class="text-center text-gray-400 py-4">Loading workers…</div>
+
+      <!-- Empty state with one-click seed button -->
+      <div x-show="!loadingWorkers && workers.length === 0" class="text-center py-3">
+        <p class="text-xs text-gray-500 mb-2">No workers found in database.</p>
+        <button @click="resetData()" :disabled="resetting" class="btn-primary w-full text-xs">
+          <span x-text="resetting ? '⏳ Seeding Demo Data…' : '🔄 Load Demo Data'"></span>
+        </button>
+      </div>
     </div>
 
     <!-- Employer Card -->
@@ -95,8 +103,13 @@
   </main>
 
   <!-- ── Footer ── -->
-  <footer class="text-center py-5 text-xs text-gray-400">
-    Prompt Wars 2026 · SDG 8: Decent Work &amp; Economic Growth
+  <footer class="text-center py-5 text-xs text-gray-400 flex flex-col items-center gap-1">
+    <div>Prompt Wars 2026 · SDG 8: Decent Work &amp; Economic Growth</div>
+    <div>
+      <button @click="resetData()" :disabled="resetting" class="text-gray-400 hover:text-gray-600 underline text-xs cursor-pointer bg-transparent border-0 p-0">
+        <span x-text="resetting ? 'Resetting…' : 'Reset Demo Data'"></span>
+      </button>
+    </div>
   </footer>
 
 </div>
@@ -109,6 +122,7 @@ document.addEventListener('alpine:init', () => {
     industry: WW.Session.industry,
     workers: [],
     loadingWorkers: true,
+    resetting: false,
     selectedWorkerId: '',
 
     get ind() { return WW.INDUSTRIES[this.industry]; },
@@ -116,6 +130,17 @@ document.addEventListener('alpine:init', () => {
     async init() {
       WW.applyIndustryTheme(this.industry);
       await this.loadWorkers();
+    },
+
+    async resetData() {
+      this.resetting = true;
+      try {
+        await WW.apiFetch('/api/seed', { method: 'POST' });
+        await this.loadWorkers();
+      } catch(e) {
+        alert('Reset error: ' + e.message);
+      }
+      this.resetting = false;
     },
 
     async setIndustry(ind) {

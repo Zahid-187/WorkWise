@@ -29,9 +29,12 @@
     </div>
   </header>
 
-  <!-- ── Industry label ── -->
-  <div class="px-4 pt-3 pb-1">
+  <!-- ── Industry label & quick reset ── -->
+  <div class="px-4 pt-3 pb-1 flex items-center justify-between">
     <span class="industry-badge" x-text="ind.icon + ' ' + ind.label"></span>
+    <button @click="resetData()" :disabled="resetting" class="text-xs text-gray-500 hover:text-gray-800 bg-white border border-gray-200 rounded-lg px-2.5 py-1 font-medium transition-colors tap-target">
+      <span x-text="resetting ? '⏳ Resetting…' : '🔄 Reset Demo Data'"></span>
+    </button>
   </div>
 
   <!-- ── Tabs ── -->
@@ -422,7 +425,19 @@ document.addEventListener('alpine:init', () => {
     gFilter: { status: '', severity: '' },
     fbFilter: '',
     loading: { grievance: false, feedback: false, risk: false },
+    resetting: false,
     modal: { open: false, title: '', type: '', themes: [], summary: null, riskList: [] },
+
+    async resetData() {
+      this.resetting = true;
+      try {
+        await WW.apiFetch('/api/seed', { method: 'POST' });
+        await this.loadAll();
+      } catch(e) {
+        alert('Reset error: ' + e.message);
+      }
+      this.resetting = false;
+    },
 
     get ind() { return WW.INDUSTRIES[this.industry]; },
     fmtH(h)   { return WW.fmtHours(h); },

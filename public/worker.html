@@ -30,7 +30,7 @@
   </template>
   <template x-if="!summary.fatigue_weekly && summary.fatigue_consecutive">
     <div class="alert-fatigue mx-4 mt-4">
-      ⚠️ Insufficient rest detected between recent shifts. Please ensure 8 hours between shifts.
+      ⚠️ Insufficient rest detected between recent shifts. Please ensure at least 10 hours of rest between consecutive shifts.
     </div>
   </template>
 
@@ -289,12 +289,19 @@ document.addEventListener('alpine:init', () => {
 
       try {
         this.worker = await WW.apiFetch(`/api/workers/${wid}`);
+        if (this.worker.industry) {
+          WW.Session.industry = this.worker.industry;
+          WW.applyIndustryTheme(this.worker.industry);
+        }
         await this.loadSummary();
         await this.loadShifts();
         await this.checkClockStatus();
         await this.loadMyGrievances();
         this.$nextTick(() => this.drawChart());
-      } catch(e) { console.error(e); }
+      } catch(e) {
+        console.error('Failed to load worker profile:', e);
+        window.location.href = '/';
+      }
     },
 
     async loadSummary() {
@@ -371,6 +378,10 @@ document.addEventListener('alpine:init', () => {
       this.recognition.onresult = (e) => {
         const text = e.results[0][0].transcript;
         this.grievance.description += (this.grievance.description ? ' ' : '') + text;
+      };
+      this.recognition.onerror = (e) => {
+        console.warn('Speech recognition error:', e);
+        this.micActive = false;
       };
       this.recognition.onend = () => { this.micActive = false; };
       this.recognition.start();

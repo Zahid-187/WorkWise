@@ -133,7 +133,7 @@ const I18N = {
     disputeDone:   '✅ Dispute submitted. HR will review it.',
     summary: (name, net, base, ot) =>
       `Hello ${name}. Your payslip for this week: Base pay is ${base}. ` +
-      (ot > 0 ? `Overtime pay is ${ot}. ` : '') +
+      (ot ? `Overtime pay is ${ot}. ` : '') +
       `After a 10 percent tax deduction, your net take-home pay is ${net}. ` +
       `If anything looks wrong, please tap the Dispute button below.`,
   },
@@ -235,19 +235,31 @@ document.addEventListener('alpine:init', () => {
       WW.applyIndustryTheme(WW.Session.industry);
       try {
         this.worker = await WW.apiFetch(`/api/workers/${wid}`);
+        if (this.worker.industry) {
+          WW.Session.industry = this.worker.industry;
+          WW.applyIndustryTheme(this.worker.industry);
+        }
         this.shifts = await WW.apiFetch(`/api/shifts?worker_id=${wid}&week=${WW.weekStartISO()}`);
         // Apply worker's preferred language
         if (['en','ta','hi'].includes(this.worker.preferred_language)) {
           this.lang = this.worker.preferred_language;
         }
-      } catch(e) { console.error(e); }
+      } catch(e) {
+        console.error('Failed to load payslip:', e);
+        window.location.href = '/';
+      }
     },
 
     setLang(code) { this.lang = code; },
 
     listenPayslip() {
-      const text = this.paySummaryText();
       if (!window.speechSynthesis) { alert('Speech not supported in this browser.'); return; }
+      if (this.speaking) {
+        window.speechSynthesis.cancel();
+        this.speaking = false;
+        return;
+      }
+      const text = this.paySummaryText();
       window.speechSynthesis.cancel();
       const utt = new SpeechSynthesisUtterance(text);
       utt.lang = this.lang === 'ta' ? 'ta-IN' : this.lang === 'hi' ? 'hi-IN' : 'en-IN';

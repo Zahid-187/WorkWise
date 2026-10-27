@@ -96,7 +96,6 @@ async function seed() {
     if (day < 5) {
       makeShift(ids.construction[3], day, 8, 8,   '');
       makeShift(ids.construction[4], day, 7, 8,   'Safety rounds');
-      makeShift(ids.construction[5], day, 8, 7.5, '');
       makeShift(ids.construction[6], day, 8, 8,   '');
       makeShift(ids.construction[7], day, 8, 7,   '');
       makeShift(ids.construction[8], day, 6, 9,   'Early crane ops');
@@ -112,10 +111,18 @@ async function seed() {
       makeShift(ids.college[5], day, 9,  7.5, '');
       makeShift(ids.college[6], day, 9,  7,   '');
       makeShift(ids.college[7], day, 10, 7,   '');
-      makeShift(ids.college[8], day, 7,  8,   '');
       makeShift(ids.college[9], day, 6,  7,   '');
     }
   }
+
+  // Dedicated back-to-back shifts (<10h rest) for testing fatigue alerts
+  // Construction: Suresh Babu (Welder) 15:00-23:00 then 06:00-14:00 (7h rest)
+  makeShift(ids.construction[5], 2, 15, 8, 'Evening welding');
+  makeShift(ids.construction[5], 1, 6,  8, 'Early morning structural fit');
+
+  // College: Senthil Kumar (Security Guard) 15:00-23:00 then 06:00-14:00 (7h rest)
+  makeShift(ids.college[8], 2, 15, 8, 'Evening campus patrol');
+  makeShift(ids.college[8], 1, 6,  8, 'Early gate unlock');
   console.log('✅ Shifts seeded');
 
   // ── Grievances ─────────────────────────────────────────────────────────────
@@ -161,7 +168,13 @@ async function seed() {
   console.log('✅ Feedback seeded');
 
   console.log('\n🎉 Database seeded! Run `npm start` to launch WorkWise at http://localhost:3000');
-  db.close();
+  return db;
 }
 
-seed().catch(err => { console.error('Seed failed:', err); process.exit(1); });
+module.exports = { seed };
+
+if (require.main === module) {
+  seed()
+    .then(db => { if (db && typeof db.close === 'function') db.close(); })
+    .catch(err => { console.error('Seed failed:', err); process.exit(1); });
+}

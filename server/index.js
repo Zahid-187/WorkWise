@@ -1,7 +1,8 @@
 'use strict';
-const express = require('express');
-const path    = require('path');
-const { initSchema } = require('./db');
+const express   = require('express');
+const path      = require('path');
+const { getDb, initSchema } = require('./db');
+const { seed }  = require('./seed');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -9,14 +10,48 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Boot: init schema, then mount routes
-initSchema().then(() => {
+// Boot: init schema, auto-seed if empty, then mount routes
+initSchema().then(async () => {
+  const db = await getDb();
+  const workerCount = db.get('SELECT COUNT(*) AS count FROM workers')?.count || 0;
+  if (workerCount === 0) {
+    console.log('📦 Database empty. Auto-seeding initial demo data...');
+    await seed();
+    console.log('✅ Auto-seed completed successfully.');
+  }
+
+  // API routes
   app.use('/api/workers',    require('./routes/workers'));
   app.use('/api/shifts',     require('./routes/shifts'));
   app.use('/api/grievances', require('./routes/grievances'));
   app.use('/api/feedback',   require('./routes/feedback'));
   app.use('/api/insights',   require('./routes/insights'));
   app.use('/api/ai',         require('./routes/insights')); // alias for backwards compatibility
+
+  // Reset / Seed endpoints
+  app.post('/api/system/reset', async (req, res) => {
+    try {
+      await seed();
+      res.json({ message: 'Database reset and seeded successfully' });
+    } catch(err) {
+      console.error('Reset failed:', err);
+      res.status(500).json({ error: 'Failed to reset database' });
+    }
+  });
+  app.post('/api/seed', async (req, res) => {
+    try {
+      await seed();
+      res.json({ message: 'Database seeded successfully' });
+    } catch(err) {
+      console.error('Seed failed:', err);
+      res.status(500).json({ error: 'Failed to seed database' });
+    }
+  });
+
+  // Direct clean URL routes
+  app.get('/worker',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'worker.html')));
+  app.get('/employer', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'employer.html')));
+  app.get('/payslip',  (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'payslip.html')));
 
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));

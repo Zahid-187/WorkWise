@@ -4,13 +4,10 @@ const { getDb } = require('../db');
 const router    = express.Router();
 
 function currentWeekStart() {
-  const now = new Date();
-  const day  = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const mon  = new Date(now);
-  mon.setDate(now.getDate() + diff);
-  mon.setHours(0, 0, 0, 0);
-  return mon.toISOString().slice(0, 10);
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
 }
 
 async function detectFatigue(db, workerId) {
@@ -19,25 +16,25 @@ async function detectFatigue(db, workerId) {
     'SELECT COALESCE(SUM(hours_worked), 0) AS total_hours FROM shifts WHERE worker_id = ? AND date >= ?',
     [workerId, weekStart]
   );
-  const fatigueWeekly = row.total_hours > 60;
+  const fatigueWeekly = (row?.total_hours || 0) > 60;
 
   const recent = db.all(
     `SELECT date, clock_in, clock_out FROM shifts
      WHERE worker_id = ? AND clock_out IS NOT NULL
-     ORDER BY date DESC LIMIT 7`,
+     ORDER BY date ASC, clock_in ASC`,
     [workerId]
   );
 
   let fatigueConsecutive = false;
   for (let i = 0; i < recent.length - 1; i++) {
-    const prev = recent[i + 1];
-    const curr = recent[i];
+    const prev = recent[i];
+    const curr = recent[i + 1];
     if (!prev.clock_out || !curr.clock_in) continue;
     const gapH = (new Date(curr.clock_in.replace(' ','T')) - new Date(prev.clock_out.replace(' ','T'))) / 3600000;
-    if (gapH < 10) { fatigueConsecutive = true; break; }
+    if (gapH >= 0 && gapH < 10) { fatigueConsecutive = true; break; }
   }
   return {
-    total_hours_this_week: Math.round((row.total_hours || 0) * 100) / 100,
+    total_hours_this_week: Math.round((row?.total_hours || 0) * 100) / 100,
     fatigue_weekly:       fatigueWeekly,
     fatigue_consecutive:  fatigueConsecutive,
   };
@@ -73,8 +70,8 @@ router.get('/summary', async (req, res) => {
 
   const result = await Promise.all(rows.map(async r => ({
     ...r,
-    total_hours:    Math.round(r.total_hours    * 100) / 100,
-    total_overtime: Math.round(r.total_overtime * 100) / 100,
+    total_hours:    Math.round((r.total_hours || 0)    * 100) / 100,
+    total_overtime: Math.round((r.total_overtime || 0) * 100) / 100,
     ...(await detectFatigue(db, r.id)),
   })));
   res.json(result);

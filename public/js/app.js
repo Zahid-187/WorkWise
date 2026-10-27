@@ -29,15 +29,23 @@ const INDUSTRIES = {
   },
 };
 
+// ─── Query param helper ──────────────────────────────────────────────────────
+function getQueryParam(name) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  } catch(e) { return null; }
+}
+
 // ─── Session helpers ─────────────────────────────────────────────────────────
 const Session = {
-  get industry()   { return sessionStorage.getItem('ww_industry') || 'construction'; },
+  get industry()   { return getQueryParam('industry') || sessionStorage.getItem('ww_industry') || 'construction'; },
   set industry(v)  { sessionStorage.setItem('ww_industry', v); },
-  get workerId()   { return sessionStorage.getItem('ww_worker_id'); },
+  get workerId()   { return getQueryParam('worker_id') || sessionStorage.getItem('ww_worker_id'); },
   set workerId(v)  { sessionStorage.setItem('ww_worker_id', v); },
   get workerName() { return sessionStorage.getItem('ww_worker_name'); },
   set workerName(v){ sessionStorage.setItem('ww_worker_name', v); },
-  get role()       { return sessionStorage.getItem('ww_role') || 'worker'; },
+  get role()       { return getQueryParam('role') || sessionStorage.getItem('ww_role') || 'worker'; },
   set role(v)      { sessionStorage.setItem('ww_role', v); },
 };
 
@@ -79,9 +87,7 @@ function todayISO() {
 
 function weekStartISO() {
   const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
+  d.setDate(d.getDate() - 6);
   return d.toISOString().slice(0, 10);
 }
 
