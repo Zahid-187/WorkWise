@@ -18,25 +18,31 @@
 <div x-data="landingApp()" x-init="init()" class="flex flex-col min-h-dvh">
 
   <!-- ── Header ── -->
-  <header class="px-4 pt-6 pb-4 text-center">
-    <div class="text-4xl mb-1" x-text="ind.icon"></div>
-    <h1 class="text-3xl font-black tracking-tight text-gray-900">WorkWise</h1>
-    <p class="text-sm text-gray-500 mt-1">Fair · Safe · Transparent · SDG 8</p>
+  <header class="px-4 pt-8 pb-4 text-center max-w-md mx-auto">
+    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-3">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      SDG 8: Decent Work &amp; Economic Growth
+    </div>
+    <div class="flex items-center justify-center gap-2 mb-1">
+      <span class="text-3xl" x-text="ind.icon"></span>
+      <h1 class="text-3xl font-black tracking-tight text-gray-900">WorkWise</h1>
+    </div>
+    <p class="text-sm text-gray-500">Fair Wages · Fatigue Prevention · Transparent Grievances</p>
   </header>
 
   <!-- ── Industry Toggle ── -->
-  <div class="px-4 mb-6">
-    <div class="flex bg-gray-100 rounded-xl p-1 max-w-sm mx-auto">
+  <div class="px-4 mb-5">
+    <div class="flex bg-slate-200/70 p-1 rounded-xl max-w-sm mx-auto shadow-inner">
       <button
         @click="setIndustry('construction')"
-        :class="industry==='construction' ? 'bg-white shadow text-orange-600 font-bold' : 'text-gray-500'"
+        :class="industry==='construction' ? 'bg-white shadow-sm text-orange-600 font-bold' : 'text-slate-600 hover:text-slate-900'"
         class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all tap-target flex items-center justify-center gap-1.5"
-      >🏗️ Construction</button>
+      >🏗️ Construction Site</button>
       <button
         @click="setIndustry('college')"
-        :class="industry==='college' ? 'bg-white shadow text-indigo-600 font-bold' : 'text-gray-500'"
+        :class="industry==='college' ? 'bg-white shadow-sm text-indigo-600 font-bold' : 'text-slate-600 hover:text-slate-900'"
         class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all tap-target flex items-center justify-center gap-1.5"
-      >🎓 College</button>
+      >🎓 College Campus</button>
     </div>
   </div>
 

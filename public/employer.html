@@ -60,6 +60,23 @@
 
     <!-- ══════════ ROSTER TAB ══════════ -->
     <div x-show="tab==='roster'" class="flex flex-col gap-3">
+
+      <!-- Executive KPI Cards -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="card p-3 text-center border-l-4 border-blue-500">
+          <div class="text-2xl font-black text-slate-800" x-text="rosterSummary.length"></div>
+          <div class="text-[11px] text-slate-500 font-bold uppercase mt-0.5">Active Staff</div>
+        </div>
+        <div class="card p-3 text-center border-l-4 border-amber-500">
+          <div class="text-2xl font-black text-amber-600" x-text="rosterSummary.filter(w => w.fatigue_weekly || w.fatigue_consecutive).length"></div>
+          <div class="text-[11px] text-slate-500 font-bold uppercase mt-0.5">Fatigue Alerts</div>
+        </div>
+        <div class="card p-3 text-center border-l-4 border-red-500">
+          <div class="text-2xl font-black text-red-600" x-text="openGrievanceCount"></div>
+          <div class="text-[11px] text-slate-500 font-bold uppercase mt-0.5">Open Issues</div>
+        </div>
+      </div>
+
       <div class="card">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Weekly Hours — <span x-text="ind.label"></span></p>
         <canvas id="rosterChart" height="180"></canvas>
