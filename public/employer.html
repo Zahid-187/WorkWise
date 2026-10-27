@@ -82,26 +82,54 @@
         <canvas id="rosterChart" height="180"></canvas>
       </div>
 
-      <template x-for="w in rosterSummary" :key="w.id">
-        <div class="card flex items-start gap-3" :class="w.fatigue_weekly ? 'overtime-row' : ''">
-          <span class="text-3xl" x-text="w.avatar_emoji"></span>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
-              <span class="font-bold text-gray-900 text-sm" x-text="w.name"></span>
-              <div class="flex gap-1.5 flex-wrap">
-                <template x-if="w.fatigue_weekly">
-                  <span class="badge badge-high">60h+ ⚠️</span>
-                </template>
-                <template x-if="w.fatigue_consecutive">
-                  <span class="badge badge-medium">Rest ⚠️</span>
-                </template>
+      <!-- Search & Filters Strip -->
+      <div class="flex flex-col gap-2">
+        <input
+          type="text"
+          x-model="rosterSearch"
+          placeholder="🔍 Search workers by name or role…"
+          class="search-input"
+        />
+        <div class="flex gap-1.5 overflow-x-auto pb-1">
+          <button @click="rosterFilter='all'" :class="rosterFilter==='all' ? 'active' : ''" class="filter-pill">
+            All Staff (<span x-text="rosterSummary.length"></span>)
+          </button>
+          <button @click="rosterFilter='fatigue_weekly'" :class="rosterFilter==='fatigue_weekly' ? 'active' : ''" class="filter-pill text-red-600">
+            ⚠️ &gt;60h Overwork (<span x-text="rosterSummary.filter(w=>w.fatigue_weekly).length"></span>)
+          </button>
+          <button @click="rosterFilter='fatigue_consecutive'" :class="rosterFilter==='fatigue_consecutive' ? 'active' : ''" class="filter-pill text-amber-600">
+            ⚠️ &lt;10h Rest Gap (<span x-text="rosterSummary.filter(w=>w.fatigue_consecutive).length"></span>)
+          </button>
+        </div>
+      </div>
+
+      <template x-for="w in filteredRoster" :key="w.id">
+        <div class="card flex flex-col gap-2.5" :class="w.fatigue_weekly ? 'overtime-row' : ''">
+          <div class="flex items-start gap-3">
+            <span class="text-3xl" x-text="w.avatar_emoji"></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="font-bold text-gray-900 text-sm" x-text="w.name"></span>
+                <div class="flex gap-1.5 flex-wrap">
+                  <template x-if="w.fatigue_weekly">
+                    <span class="badge badge-high">60h+ ⚠️</span>
+                  </template>
+                  <template x-if="w.fatigue_consecutive">
+                    <span class="badge badge-medium">Rest &lt;10h ⚠️</span>
+                  </template>
+                </div>
+              </div>
+              <p class="text-xs text-gray-400" x-text="w.role"></p>
+              <div class="flex gap-4 mt-1.5 text-sm">
+                <span :class="w.fatigue_weekly ? 'overtime-text' : 'text-gray-700'" class="font-bold" x-text="fmtH(w.total_hours) + ' worked'"></span>
+                <span class="text-amber-600 font-semibold" x-show="w.total_overtime > 0" x-text="fmtH(w.total_overtime) + ' OT'"></span>
               </div>
             </div>
-            <p class="text-xs text-gray-400" x-text="w.role"></p>
-            <div class="flex gap-4 mt-1.5 text-sm">
-              <span :class="w.fatigue_weekly ? 'overtime-text' : 'text-gray-700'" class="font-bold" x-text="fmtH(w.total_hours) + ' worked'"></span>
-              <span class="text-amber-600 font-semibold" x-show="w.total_overtime > 0" x-text="fmtH(w.total_overtime) + ' OT'"></span>
-            </div>
+          </div>
+          <!-- Micro Progress Bar vs 60h Limit -->
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill"
+                 :style="`width: ${Math.min(100, Math.round(((w.total_hours || 0)/60)*100))}%; background: ${w.fatigue_weekly ? '#DC2626' : (w.fatigue_consecutive ? '#F59E0B' : (industry === 'college' ? '#4F46E5' : '#EA580C'))}`"></div>
           </div>
         </div>
       </template>
@@ -150,6 +178,13 @@
           </div>
           <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide" x-text="g.category"></p>
           <p class="text-sm text-gray-700 leading-relaxed" x-text="g.description"></p>
+          <!-- HR resolution note if resolved -->
+          <template x-if="g.resolution_note">
+            <div class="mt-1 p-2 bg-emerald-50 rounded-lg border border-emerald-100 text-xs text-emerald-800 flex items-start gap-1.5">
+              <span class="font-bold flex-shrink-0">✓ HR Note:</span>
+              <span x-text="g.resolution_note"></span>
+            </div>
+          </template>
           <!-- Action buttons -->
           <div x-show="g.status !== 'resolved'" class="flex gap-2 mt-1">
             <button
@@ -439,6 +474,8 @@ document.addEventListener('alpine:init', () => {
     rosterSummary: [],
     grievances: [],
     feedback: [],
+    rosterSearch: '',
+    rosterFilter: 'all',
     gFilter: { status: '', severity: '' },
     fbFilter: '',
     loading: { grievance: false, feedback: false, risk: false },
@@ -467,6 +504,18 @@ document.addEventListener('alpine:init', () => {
       return this.grievances.filter(g => {
         if (this.gFilter.status   && g.status   !== this.gFilter.status)   return false;
         if (this.gFilter.severity && g.severity !== this.gFilter.severity) return false;
+        return true;
+      });
+    },
+
+    get filteredRoster() {
+      return this.rosterSummary.filter(w => {
+        if (this.rosterFilter === 'fatigue_weekly' && !w.fatigue_weekly) return false;
+        if (this.rosterFilter === 'fatigue_consecutive' && !w.fatigue_consecutive) return false;
+        if (this.rosterSearch) {
+          const q = this.rosterSearch.toLowerCase();
+          return w.name.toLowerCase().includes(q) || w.role.toLowerCase().includes(q);
+        }
         return true;
       });
     },
@@ -520,10 +569,14 @@ document.addEventListener('alpine:init', () => {
     },
 
     async updateGrievance(id, status, severity) {
+      let resolution_note = '';
+      if (status === 'resolved') {
+        resolution_note = prompt('Resolution remark for worker (optional):', 'Investigated and resolved by site HR.') || 'Resolved by management.';
+      }
       try {
         await WW.apiFetch(`/api/grievances/${id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ status, severity }),
+          body: JSON.stringify({ status, severity, resolution_note }),
         });
         await this.loadGrievances();
       } catch(e) { alert('Error: ' + e.message); }

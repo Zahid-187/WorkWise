@@ -13,11 +13,16 @@
 <div x-data="workerApp()" x-init="init()" class="max-w-lg mx-auto">
 
   <!-- ── Top Bar ── -->
-  <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-    <a href="/" class="text-gray-400 tap-target flex items-center">← Back</a>
-    <div class="text-center">
-      <div class="font-black text-gray-900 text-base" x-text="worker.name || 'Loading…'"></div>
-      <div class="text-xs text-gray-400" x-text="worker.role"></div>
+  <header class="bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-100 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+    <a href="/" class="text-slate-500 hover:text-slate-800 tap-target flex items-center gap-1 text-sm font-semibold transition-colors">
+      <span>←</span> Home
+    </a>
+    <div class="flex items-center gap-2.5 text-center">
+      <span class="text-2xl" x-text="worker.avatar_emoji || '👤'"></span>
+      <div>
+        <div class="font-black text-slate-900 text-sm leading-tight" x-text="worker.name || 'Loading…'"></div>
+        <div class="text-[11px] text-slate-500 font-medium" x-text="`${worker.role} · ${worker.department || 'General'}`"></div>
+      </div>
     </div>
     <span class="industry-badge text-xs" x-text="ind.icon + ' ' + ind.label"></span>
   </header>
@@ -75,28 +80,48 @@
 
     <!-- ── Weekly Summary Card ── -->
     <div class="card">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">This Week</p>
-      <div class="grid grid-cols-3 gap-3 text-center mb-4">
-        <div>
-          <div class="text-2xl font-black" :class="summary.total_hours_this_week > 60 ? 'overtime-text' : 'text-gray-900'" x-text="fmtH(summary.total_hours_this_week)"></div>
-          <div class="text-xs text-gray-400 mt-0.5">Hours</div>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Weekly Work &amp; Overtime</p>
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              :class="summary.total_hours_this_week > 60 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'"
+              x-text="summary.total_hours_this_week > 60 ? '⚠️ Over 60h Limit' : '✓ Normal Hours'"></span>
+      </div>
+
+      <!-- Safe Hours Progress Bar -->
+      <div class="mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+        <div class="flex justify-between items-center text-xs font-bold mb-1.5">
+          <span class="text-slate-600">Progress Towards 60h Safe Threshold</span>
+          <span :class="summary.total_hours_this_week > 60 ? 'text-red-600 font-extrabold' : 'text-slate-700'"
+                x-text="`${Math.round(summary.total_hours_this_week || 0)}h / 60h`"></span>
         </div>
-        <div>
-          <div class="text-2xl font-black text-amber-600" x-text="fmtH(summary.total_overtime || 0)"></div>
-          <div class="text-xs text-gray-400 mt-0.5">Overtime</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill"
+               :style="`width: ${Math.min(100, Math.round(((summary.total_hours_this_week || 0)/60)*100))}%; background: ${summary.total_hours_this_week > 60 ? '#DC2626' : (ind.primary || '#EA580C')}`"></div>
         </div>
-        <div>
-          <div class="text-2xl font-black text-green-600" x-text="fmtCur(estimatedPay)"></div>
-          <div class="text-xs text-gray-400 mt-0.5">Est. Pay</div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5 text-center mb-4">
+        <div class="p-2 bg-slate-50 rounded-xl border border-slate-100">
+          <div class="text-xl font-black" :class="summary.total_hours_this_week > 60 ? 'overtime-text' : 'text-slate-900'" x-text="fmtH(summary.total_hours_this_week)"></div>
+          <div class="text-[11px] font-semibold text-slate-400 mt-0.5">Hours Logged</div>
+        </div>
+        <div class="p-2 bg-amber-50/70 rounded-xl border border-amber-100">
+          <div class="text-xl font-black text-amber-700" x-text="fmtH(summary.total_overtime || 0)"></div>
+          <div class="text-[11px] font-semibold text-amber-600 mt-0.5">Overtime (1.5×)</div>
+        </div>
+        <div class="p-2 bg-emerald-50/70 rounded-xl border border-emerald-100">
+          <div class="text-xl font-black text-emerald-700" x-text="fmtCur(estimatedPay)"></div>
+          <div class="text-[11px] font-semibold text-emerald-600 mt-0.5">Estimated Pay</div>
         </div>
       </div>
       <!-- Chart -->
       <canvas id="weekChart" height="120"></canvas>
       <!-- Payslip link -->
       <a href="/payslip.html"
-        class="btn-primary mt-4 w-full text-center no-underline block"
-        style="background:#16A34A; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-        📄 View My Payslip
+        class="btn-primary mt-4 w-full text-center no-underline block shadow-sm"
+        style="background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); text-decoration:none; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+        <span>📄 View Itemized Payslip Breakdown</span>
+        <span>→</span>
       </a>
     </div>
 
@@ -171,7 +196,15 @@
               title="Voice to text"
             >🎤</button>
           </div>
-          <p x-show="micActive" class="text-xs text-red-500 mt-1">🔴 Listening… speak now</p>
+          <div x-show="micActive" class="flex items-center gap-2 text-xs text-red-600 font-bold mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
+            <div class="equalizer-wave text-red-600">
+              <span class="equalizer-bar"></span>
+              <span class="equalizer-bar"></span>
+              <span class="equalizer-bar"></span>
+              <span class="equalizer-bar"></span>
+            </div>
+            <span>Listening to voice in English/Tamil/Hindi… speak your concern</span>
+          </div>
         </div>
 
         <button
@@ -253,6 +286,13 @@
                 </div>
               </div>
               <p class="text-xs text-gray-500 line-clamp-2" x-text="g.description"></p>
+              <!-- HR Resolution Note if provided -->
+              <template x-if="g.resolution_note">
+                <div class="mt-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100 text-xs text-emerald-800 flex items-start gap-1.5">
+                  <span class="font-bold flex-shrink-0">💬 HR Resolution:</span>
+                  <span x-text="g.resolution_note"></span>
+                </div>
+              </template>
               <p class="text-xs text-gray-300 mt-1.5" x-text="new Date(g.created_at).toLocaleDateString()"></p>
             </div>
           </template>
