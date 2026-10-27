@@ -64,53 +64,32 @@
         <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Worker View</span>
       </div>
 
-      <!-- Worker selector & PIN login -->
-      <div x-show="!loadingWorkers && workers.length > 0" class="mt-2 flex flex-col gap-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">1. Select Your Account</label>
-          <div class="relative">
-            <select
-              x-model="selectedWorkerId"
-              @change="authError=''"
-              class="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold bg-white focus:ring-2 focus:border-transparent transition-all shadow-sm cursor-pointer appearance-none"
-              :style="`focus:ring-color: ${ind.primary}`"
-            >
-              <option value="">— Select your profile —</option>
-              <template x-for="w in workers" :key="w.id">
-                <option :value="w.id" x-text="`${w.avatar_emoji} ${w.name} — ${w.role} [${w.badge_id || 'WW-'+(100+w.id)}]`"></option>
-              </template>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
-              ▼
-            </div>
-          </div>
-        </div>
-
-        <!-- PIN Input (shown when profile selected) -->
-        <div x-show="selectedWorkerId" x-transition>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">2. Security PIN</label>
-            <span class="text-[11px] text-slate-400 font-medium">Demo PIN: <strong class="text-slate-700">1234</strong></span>
-          </div>
-          <input
-            type="password"
-            x-model="workerPin"
-            maxlength="8"
-            placeholder="Enter your 4-digit PIN"
-            @keyup.enter="loginWorker()"
-            class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 font-mono tracking-widest text-center text-lg bg-white focus:ring-2 focus:border-transparent transition-all shadow-sm"
+      <!-- Worker selector -->
+      <div x-show="!loadingWorkers && workers.length > 0" class="mt-2">
+        <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Select Your Profile</label>
+        <div class="relative">
+          <select
+            x-model="selectedWorkerId"
+            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold bg-white focus:ring-2 focus:border-transparent transition-all shadow-sm cursor-pointer appearance-none"
             :style="`focus:ring-color: ${ind.primary}`"
-          />
-          <p x-show="authError" x-text="authError" class="text-xs text-red-600 font-semibold mt-1 text-center"></p>
+          >
+            <option value="">— Choose your name to log in —</option>
+            <template x-for="w in workers" :key="w.id">
+              <option :value="w.id" x-text="`${w.avatar_emoji} ${w.name} — ${w.role} (${w.department || 'General'})`"></option>
+            </template>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
+            ▼
+          </div>
         </div>
 
         <button
-          @click="loginWorker()"
-          :disabled="!selectedWorkerId || !workerPin || authLoading"
-          class="btn-primary w-full mt-1"
-          :class="(!selectedWorkerId || !workerPin) ? 'opacity-40 cursor-not-allowed' : ''"
+          @click="goWorker()"
+          :disabled="!selectedWorkerId"
+          class="btn-primary w-full mt-3.5"
+          :class="!selectedWorkerId ? 'opacity-40 cursor-not-allowed' : ''"
         >
-          <span x-text="authLoading ? '⏳ Verifying Credentials…' : '🔒 Secure Sign In to My Account'"></span>
+          <span>Enter Worker Workspace</span>
           <span class="text-lg">→</span>
         </button>
       </div>
@@ -143,31 +122,14 @@
         <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Admin View</span>
       </div>
 
-      <p class="text-xs text-slate-600 mb-3 leading-relaxed">
-        Restricted to authorized workplace administrators. Monitor hours, fatigue flags, and team grievances.
+      <p class="text-xs text-slate-600 mb-3.5 leading-relaxed">
+        Live dashboard monitoring weekly hours, <strong class="text-slate-800">overwork warnings (&gt;60h)</strong>, consecutive rest gap alerts (&lt;10h), and sentiment breakdowns across teams.
       </p>
 
-      <div class="flex flex-col gap-2.5">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Admin Passcode</label>
-            <span class="text-[11px] text-slate-400 font-medium">Demo: <strong class="text-slate-700">workwise2026</strong></span>
-          </div>
-          <input
-            type="password"
-            x-model="adminPasscode"
-            placeholder="Enter admin passcode"
-            @keyup.enter="loginAdmin()"
-            class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent transition-all shadow-sm"
-          />
-          <p x-show="adminAuthError" x-text="adminAuthError" class="text-xs text-red-600 font-semibold mt-1"></p>
-        </div>
-
-        <button @click="loginAdmin()" :disabled="adminAuthLoading || !adminPasscode" class="btn-primary w-full" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%)">
-          <span x-text="adminAuthLoading ? '⏳ Authorizing…' : '🔐 Authorize & Open Admin Dashboard'"></span>
-          <span class="text-lg">→</span>
-        </button>
-      </div>
+      <button @click="goEmployer()" class="btn-primary w-full" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%)">
+        <span>Open Admin Intelligence Dashboard</span>
+        <span class="text-lg">→</span>
+      </button>
     </div>
 
     <!-- Feature Pillars Ticker -->
@@ -213,12 +175,6 @@ document.addEventListener('alpine:init', () => {
     loadingWorkers: true,
     resetting: false,
     selectedWorkerId: '',
-    workerPin: '1234',
-    authError: '',
-    authLoading: false,
-    adminPasscode: 'workwise2026',
-    adminAuthError: '',
-    adminAuthLoading: false,
 
     get ind() { return WW.INDUSTRIES[this.industry]; },
 
@@ -243,7 +199,6 @@ document.addEventListener('alpine:init', () => {
       WW.Session.industry = ind;
       WW.applyIndustryTheme(ind);
       this.selectedWorkerId = '';
-      this.authError = '';
       await this.loadWorkers();
     },
 
@@ -255,47 +210,18 @@ document.addEventListener('alpine:init', () => {
       this.loadingWorkers = false;
     },
 
-    async loginWorker() {
+    goWorker() {
       if (!this.selectedWorkerId) return;
-      this.authLoading = true;
-      this.authError = '';
-      try {
-        const res = await WW.apiFetch('/api/auth/worker-login', {
-          method: 'POST',
-          body: JSON.stringify({
-            worker_id: this.selectedWorkerId,
-            pin: this.workerPin,
-          }),
-        });
-        WW.Session.token      = res.token;
-        WW.Session.workerId   = res.worker.id;
-        WW.Session.workerName = res.worker.name;
-        WW.Session.badgeId    = res.worker.badge_id;
-        WW.Session.role       = 'worker';
-        WW.Session.industry   = res.worker.industry;
-        window.location.href  = '/worker.html';
-      } catch(e) {
-        this.authError = e.message || 'Incorrect PIN. Try 1234.';
-      }
-      this.authLoading = false;
+      const w = this.workers.find(x => x.id == this.selectedWorkerId);
+      WW.Session.workerId   = this.selectedWorkerId;
+      WW.Session.workerName = w ? w.name : '';
+      WW.Session.role       = 'worker';
+      window.location.href  = '/worker.html';
     },
 
-    async loginAdmin() {
-      if (!this.adminPasscode) return;
-      this.adminAuthLoading = true;
-      this.adminAuthError = '';
-      try {
-        const res = await WW.apiFetch('/api/auth/admin-login', {
-          method: 'POST',
-          body: JSON.stringify({ passcode: this.adminPasscode }),
-        });
-        WW.Session.token = res.token;
-        WW.Session.role  = 'employer';
-        window.location.href = '/employer.html';
-      } catch(e) {
-        this.adminAuthError = e.message || 'Invalid passcode';
-      }
-      this.adminAuthLoading = false;
+    goEmployer() {
+      WW.Session.role = 'employer';
+      window.location.href = '/employer.html';
     },
   }));
 });

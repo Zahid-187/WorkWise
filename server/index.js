@@ -28,7 +28,6 @@ initSchema().then(async () => {
   }
 
   // API routes
-  app.use('/api/auth',       require('./routes/auth'));
   app.use('/api/workers',    require('./routes/workers'));
   app.use('/api/shifts',     require('./routes/shifts'));
   app.use('/api/grievances', require('./routes/grievances'));

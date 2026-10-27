@@ -37,51 +37,23 @@ function getQueryParam(name) {
   } catch(e) { return null; }
 }
 
-// ─── Session helpers with PIN/Token Authentication ───────────────────────────
+// ─── Session helpers ─────────────────────────────────────────────────────────
 const Session = {
   get industry()   { return getQueryParam('industry') || sessionStorage.getItem('ww_industry') || 'construction'; },
   set industry(v)  { sessionStorage.setItem('ww_industry', v); },
-  get workerId()   { return sessionStorage.getItem('ww_worker_id'); },
+  get workerId()   { return getQueryParam('worker_id') || sessionStorage.getItem('ww_worker_id'); },
   set workerId(v)  { sessionStorage.setItem('ww_worker_id', v); },
   get workerName() { return sessionStorage.getItem('ww_worker_name'); },
   set workerName(v){ sessionStorage.setItem('ww_worker_name', v); },
-  get badgeId()    { return sessionStorage.getItem('ww_badge_id'); },
-  set badgeId(v)   { sessionStorage.setItem('ww_badge_id', v); },
-  get role()       { return sessionStorage.getItem('ww_role') || 'guest'; },
+  get role()       { return getQueryParam('role') || sessionStorage.getItem('ww_role') || 'worker'; },
   set role(v)      { sessionStorage.setItem('ww_role', v); },
-  get token()      { return sessionStorage.getItem('ww_token'); },
-  set token(v)     { sessionStorage.setItem('ww_token', v); },
-
-  isAuthenticated(requiredRole = 'worker') {
-    if (!this.token) return false;
-    if (requiredRole === 'employer') return this.role === 'employer';
-    if (requiredRole === 'worker') return this.role === 'worker' && !!this.workerId;
-    return true;
-  },
-
-  clear() {
-    sessionStorage.removeItem('ww_token');
-    sessionStorage.removeItem('ww_worker_id');
-    sessionStorage.removeItem('ww_worker_name');
-    sessionStorage.removeItem('ww_badge_id');
-    sessionStorage.removeItem('ww_role');
-  }
 };
-
-function logout() {
-  Session.clear();
-  window.location.href = '/';
-}
 
 // ─── Fetch helpers ───────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
-  if (Session.token) {
-    headers['Authorization'] = `Bearer ${Session.token}`;
-  }
   const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
     ...options,
-    headers,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -120,4 +92,4 @@ function weekStartISO() {
 }
 
 // ─── Export globals ───────────────────────────────────────────────────────────
-window.WW = { INDUSTRIES, Session, logout, apiFetch, applyIndustryTheme, fmtHours, fmtCurrency, todayISO, weekStartISO };
+window.WW = { INDUSTRIES, Session, apiFetch, applyIndustryTheme, fmtHours, fmtCurrency, todayISO, weekStartISO };
