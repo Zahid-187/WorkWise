@@ -7,9 +7,10 @@ const { calculateAttritionRisk } = require('../lib/attritionRisk');
 
 const router = express.Router();
 
-// Helper to extract industry from req.body or req.query
+// Helper to extract industry from req.body or req.query safely
 function resolveIndustry(req) {
-  return (req.body?.industry || req.query?.industry || 'construction').toLowerCase();
+  const ind = String(req.body?.industry || req.query?.industry || 'construction').toLowerCase();
+  return (ind === 'college') ? 'college' : 'construction';
 }
 
 /**

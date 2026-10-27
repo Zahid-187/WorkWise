@@ -112,6 +112,7 @@ async function initSchema() {
       status            TEXT    NOT NULL DEFAULT 'open',
       severity          TEXT    NOT NULL DEFAULT 'medium',
       is_payslip_dispute INTEGER NOT NULL DEFAULT 0,
+      resolution_note   TEXT    DEFAULT '',
       created_at        TEXT    DEFAULT (datetime('now')),
       resolved_at       TEXT
     );
@@ -125,6 +126,7 @@ async function initSchema() {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
+  try { db.run('ALTER TABLE grievances ADD COLUMN resolution_note TEXT DEFAULT "";'); } catch(e) {}
   return db;
 }
 

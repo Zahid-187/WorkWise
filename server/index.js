@@ -6,9 +6,16 @@ const { seed }  = require('./seed');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+const { securityHeaders, rateLimiter } = require('./middleware/security');
 
-app.use(express.json());
+// Security Hardening: hide express signature, apply headers, limit payload size
+app.disable('x-powered-by');
+app.use(securityHeaders);
+app.use(express.json({ limit: '100kb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Global API rate limiter (120 requests per minute)
+app.use('/api', rateLimiter({ windowMs: 60000, max: 120 }));
 
 // Boot: init schema, auto-seed if empty, then mount routes
 initSchema().then(async () => {
@@ -28,8 +35,9 @@ initSchema().then(async () => {
   app.use('/api/insights',   require('./routes/insights'));
   app.use('/api/ai',         require('./routes/insights')); // alias for backwards compatibility
 
-  // Reset / Seed endpoints
-  app.post('/api/system/reset', async (req, res) => {
+  // Reset / Seed endpoints with strict rate limiting
+  const seedLimiter = rateLimiter({ windowMs: 60000, max: 6, message: 'Too many reset requests. Please wait a minute.' });
+  app.post('/api/system/reset', seedLimiter, async (req, res) => {
     try {
       await seed();
       res.json({ message: 'Database reset and seeded successfully' });
@@ -38,7 +46,7 @@ initSchema().then(async () => {
       res.status(500).json({ error: 'Failed to reset database' });
     }
   });
-  app.post('/api/seed', async (req, res) => {
+  app.post('/api/seed', seedLimiter, async (req, res) => {
     try {
       await seed();
       res.json({ message: 'Database seeded successfully' });
