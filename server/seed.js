@@ -30,34 +30,34 @@ async function seed() {
 
   // ── Workers ────────────────────────────────────────────────────────────────
   const insertWorker = db.prepare(`
-    INSERT INTO workers (name, role, industry, avatar_emoji, department, hourly_rate, preferred_language)
-    VALUES (@name, @role, @industry, @avatar_emoji, @department, @hourly_rate, @preferred_language)
+    INSERT INTO workers (name, role, industry, avatar_emoji, department, hourly_rate, preferred_language, badge_id, pin)
+    VALUES (@name, @role, @industry, @avatar_emoji, @department, @hourly_rate, @preferred_language, @badge_id, @pin)
   `);
 
   const constructionWorkers = [
-    { name: 'Rajan Kumar',    role: 'Site Manager',    avatar_emoji: '👷',  department: 'Management',  hourly_rate: 28.00, preferred_language: 'hi' },
-    { name: 'Selvam Murugan', role: 'Mason',            avatar_emoji: '🧱',  department: 'Structural',  hourly_rate: 18.50, preferred_language: 'ta' },
-    { name: 'Arjun Patel',    role: 'Electrician',      avatar_emoji: '⚡',  department: 'Electrical',  hourly_rate: 22.00, preferred_language: 'hi' },
-    { name: 'Dinesh Raj',     role: 'Carpenter',        avatar_emoji: '🪚',  department: 'Structural',  hourly_rate: 19.00, preferred_language: 'ta' },
-    { name: 'Priya Nair',     role: 'Safety Officer',   avatar_emoji: '⛑️',  department: 'Safety',      hourly_rate: 24.00, preferred_language: 'en' },
-    { name: 'Suresh Babu',    role: 'Welder',           avatar_emoji: '🔥',  department: 'Structural',  hourly_rate: 20.00, preferred_language: 'ta' },
-    { name: 'Ramesh Yadav',   role: 'Plumber',          avatar_emoji: '🔧',  department: 'Plumbing',    hourly_rate: 19.50, preferred_language: 'hi' },
-    { name: 'Karthik Selvam', role: 'Scaffolder',       avatar_emoji: '🏗️',  department: 'Structural',  hourly_rate: 17.00, preferred_language: 'ta' },
-    { name: 'Mohan Das',      role: 'Crane Operator',   avatar_emoji: '🏋️',  department: 'Heavy Ops',   hourly_rate: 26.00, preferred_language: 'hi' },
-    { name: 'Vijay Anand',    role: 'General Labourer', avatar_emoji: '👷',  department: 'General',     hourly_rate: 14.50, preferred_language: 'ta' },
+    { name: 'Rajan Kumar',    role: 'Site Manager',    avatar_emoji: '👷',  department: 'Management',  hourly_rate: 28.00, preferred_language: 'hi', badge_id: 'WW-101', pin: '1234' },
+    { name: 'Selvam Murugan', role: 'Mason',            avatar_emoji: '🧱',  department: 'Structural',  hourly_rate: 18.50, preferred_language: 'ta', badge_id: 'WW-102', pin: '1234' },
+    { name: 'Arjun Patel',    role: 'Electrician',      avatar_emoji: '⚡',  department: 'Electrical',  hourly_rate: 22.00, preferred_language: 'hi', badge_id: 'WW-103', pin: '1234' },
+    { name: 'Dinesh Raj',     role: 'Carpenter',        avatar_emoji: '🪚',  department: 'Structural',  hourly_rate: 19.00, preferred_language: 'ta', badge_id: 'WW-104', pin: '1234' },
+    { name: 'Priya Nair',     role: 'Safety Officer',   avatar_emoji: '⛑️',  department: 'Safety',      hourly_rate: 24.00, preferred_language: 'en', badge_id: 'WW-105', pin: '1234' },
+    { name: 'Suresh Babu',    role: 'Welder',           avatar_emoji: '🔥',  department: 'Structural',  hourly_rate: 20.00, preferred_language: 'ta', badge_id: 'WW-106', pin: '1234' },
+    { name: 'Ramesh Yadav',   role: 'Plumber',          avatar_emoji: '🔧',  department: 'Plumbing',    hourly_rate: 19.50, preferred_language: 'hi', badge_id: 'WW-107', pin: '1234' },
+    { name: 'Karthik Selvam', role: 'Scaffolder',       avatar_emoji: '🏗️',  department: 'Structural',  hourly_rate: 17.00, preferred_language: 'ta', badge_id: 'WW-108', pin: '1234' },
+    { name: 'Mohan Das',      role: 'Crane Operator',   avatar_emoji: '🏋️',  department: 'Heavy Ops',   hourly_rate: 26.00, preferred_language: 'hi', badge_id: 'WW-109', pin: '1234' },
+    { name: 'Vijay Anand',    role: 'General Labourer', avatar_emoji: '👷',  department: 'General',     hourly_rate: 14.50, preferred_language: 'ta', badge_id: 'WW-110', pin: '1234' },
   ];
 
   const collegeWorkers = [
-    { name: 'Dr. Meena Iyer',   role: 'Principal',      avatar_emoji: '🎓',  department: 'Administration',  hourly_rate: 45.00, preferred_language: 'en' },
-    { name: 'Prof. Sanjay Das', role: 'Lecturer',        avatar_emoji: '👨‍🏫', department: 'Science',          hourly_rate: 32.00, preferred_language: 'hi' },
-    { name: 'Lakshmi Priya',    role: 'Lecturer',        avatar_emoji: '👩‍🏫', department: 'Arts',             hourly_rate: 30.00, preferred_language: 'ta' },
-    { name: 'Anbu Selvan',      role: 'Lecturer',        avatar_emoji: '👨‍🏫', department: 'Commerce',         hourly_rate: 30.00, preferred_language: 'ta' },
-    { name: 'Geetha Krishnan',  role: 'Admin Staff',     avatar_emoji: '💼',  department: 'Administration',  hourly_rate: 18.00, preferred_language: 'en' },
-    { name: 'Muthu Raman',      role: 'Lab Technician',  avatar_emoji: '🔬',  department: 'Science',          hourly_rate: 20.00, preferred_language: 'ta' },
-    { name: 'Saraswathi V',     role: 'Librarian',       avatar_emoji: '📚',  department: 'Library',          hourly_rate: 17.00, preferred_language: 'en' },
-    { name: 'Balamurugan K',    role: 'Counsellor',      avatar_emoji: '🤝',  department: 'Student Affairs',  hourly_rate: 22.00, preferred_language: 'ta' },
-    { name: 'Senthil Kumar',    role: 'Security Guard',  avatar_emoji: '🔒',  department: 'Security',         hourly_rate: 14.00, preferred_language: 'ta' },
-    { name: 'Rajeswari M',      role: 'Janitor',         avatar_emoji: '🧹',  department: 'Facilities',       hourly_rate: 12.50, preferred_language: 'ta' },
+    { name: 'Dr. Meena Iyer',   role: 'Principal',      avatar_emoji: '🎓',  department: 'Administration',  hourly_rate: 45.00, preferred_language: 'en', badge_id: 'WW-201', pin: '1234' },
+    { name: 'Prof. Sanjay Das', role: 'Lecturer',        avatar_emoji: '👨‍🏫', department: 'Science',          hourly_rate: 32.00, preferred_language: 'hi', badge_id: 'WW-202', pin: '1234' },
+    { name: 'Lakshmi Priya',    role: 'Lecturer',        avatar_emoji: '👩‍🏫', department: 'Arts',             hourly_rate: 30.00, preferred_language: 'ta', badge_id: 'WW-203', pin: '1234' },
+    { name: 'Anbu Selvan',      role: 'Lecturer',        avatar_emoji: '👨‍🏫', department: 'Commerce',         hourly_rate: 30.00, preferred_language: 'ta', badge_id: 'WW-204', pin: '1234' },
+    { name: 'Geetha Krishnan',  role: 'Admin Staff',     avatar_emoji: '💼',  department: 'Administration',  hourly_rate: 18.00, preferred_language: 'en', badge_id: 'WW-205', pin: '1234' },
+    { name: 'Muthu Raman',      role: 'Lab Technician',  avatar_emoji: '🔬',  department: 'Science',          hourly_rate: 20.00, preferred_language: 'ta', badge_id: 'WW-206', pin: '1234' },
+    { name: 'Saraswathi V',     role: 'Librarian',       avatar_emoji: '📚',  department: 'Library',          hourly_rate: 17.00, preferred_language: 'en', badge_id: 'WW-207', pin: '1234' },
+    { name: 'Balamurugan K',    role: 'Counsellor',      avatar_emoji: '🤝',  department: 'Student Affairs',  hourly_rate: 22.00, preferred_language: 'ta', badge_id: 'WW-208', pin: '1234' },
+    { name: 'Senthil Kumar',    role: 'Security Guard',  avatar_emoji: '🔒',  department: 'Security',         hourly_rate: 14.00, preferred_language: 'ta', badge_id: 'WW-209', pin: '1234' },
+    { name: 'Rajeswari M',      role: 'Janitor',         avatar_emoji: '🧹',  department: 'Facilities',       hourly_rate: 12.50, preferred_language: 'ta', badge_id: 'WW-210', pin: '1234' },
   ];
 
   const ids = { construction: [], college: [] };

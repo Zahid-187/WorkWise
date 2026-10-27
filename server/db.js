@@ -89,6 +89,8 @@ async function initSchema() {
       department         TEXT,
       hourly_rate        REAL    NOT NULL DEFAULT 15.00,
       preferred_language TEXT    NOT NULL DEFAULT 'en',
+      badge_id           TEXT,
+      pin                TEXT    NOT NULL DEFAULT '1234',
       created_at         TEXT    DEFAULT (datetime('now'))
     );
 
@@ -127,6 +129,8 @@ async function initSchema() {
     );
   `);
   try { db.run('ALTER TABLE grievances ADD COLUMN resolution_note TEXT DEFAULT "";'); } catch(e) {}
+  try { db.run('ALTER TABLE workers ADD COLUMN badge_id TEXT;'); } catch(e) {}
+  try { db.run("ALTER TABLE workers ADD COLUMN pin TEXT DEFAULT '1234';"); } catch(e) {}
   return db;
 }
 

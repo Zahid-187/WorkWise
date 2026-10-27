@@ -13,19 +13,24 @@
 <div x-data="employerApp()" x-init="init()" class="max-w-2xl mx-auto">
 
   <!-- ── Header ── -->
-  <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-    <a href="/" class="text-gray-400 tap-target flex items-center text-sm">← Home</a>
-    <div class="text-center">
-      <h1 class="font-black text-gray-900 text-base">Admin Dashboard</h1>
+  <header class="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">📊</span>
+      <h1 class="font-black text-slate-900 text-sm">Admin Dashboard</h1>
     </div>
-    <!-- Industry toggle -->
-    <div class="flex gap-1">
-      <button @click="setIndustry('construction')"
-        :class="industry==='construction' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'"
-        class="tap-target px-2.5 py-1 rounded-lg text-xs font-bold transition-all">🏗️</button>
-      <button @click="setIndustry('college')"
-        :class="industry==='college' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'"
-        class="tap-target px-2.5 py-1 rounded-lg text-xs font-bold transition-all">🎓</button>
+    <!-- Industry toggle & Sign Out -->
+    <div class="flex items-center gap-2">
+      <div class="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
+        <button @click="setIndustry('construction')"
+          :class="industry==='construction' ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+          class="tap-target px-2.5 py-1 rounded-md text-xs font-bold transition-all">🏗️</button>
+        <button @click="setIndustry('college')"
+          :class="industry==='college' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+          class="tap-target px-2.5 py-1 rounded-md text-xs font-bold transition-all">🎓</button>
+      </div>
+      <button @click="WW.logout()" class="text-xs font-bold text-slate-500 hover:text-red-600 px-2 py-1.5 rounded-lg border border-slate-200 bg-white transition-colors flex items-center gap-1">
+        <span>🔒</span> Exit
+      </button>
     </div>
   </header>
 
@@ -533,6 +538,10 @@ document.addEventListener('alpine:init', () => {
     },
 
     async init() {
+      if (!WW.Session.isAuthenticated('employer')) {
+        window.location.href = '/';
+        return;
+      }
       WW.applyIndustryTheme(this.industry);
       await this.loadAll();
     },
